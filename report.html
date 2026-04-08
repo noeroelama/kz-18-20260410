@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CASA Progress Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script>
+/* Must run BEFORE MathJax loads so startup.ready hook is registered in time */
+window.MathJax = {
+  svg: {
+    fontCache: 'global'          /* reuse SVG glyphs across equations — faster */
+  },
+  startup: {
+    ready() {
+      MathJax.startup.defaultReady();
+      MathJax.startup.promise.then(() => {
+        scaleMath();
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(scaleMath, 150);
+        });
+      });
+    }
+  }
+};
+function scaleMath() {
+  /* SVG output: MathJax wraps each equation in <mjx-container> with an <svg> inside */
+  document.querySelectorAll('mjx-container[display="true"]').forEach(el => {
+    el.style.transform    = '';
+    el.style.marginBottom = '';
+    const parent    = el.closest('.formula, .proof-body, p, .step-body, section') || el.parentElement;
+    const available = parent.getBoundingClientRect().width
+                      - parseFloat(getComputedStyle(parent).paddingLeft  || 0)
+                      - parseFloat(getComputedStyle(parent).paddingRight || 0);
+    const mathW = el.scrollWidth;
+    if (mathW > available + 4 && available > 0) {
+      const scale = available / mathW;
+      const origH = el.getBoundingClientRect().height;
+      el.style.transformOrigin = 'left center';
+      el.style.transform       = `scale(${scale})`;
+      el.style.marginBottom    = `${(origH * scale - origH).toFixed(1)}px`;
+    }
+  });
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<style>
+:root {
+  --ink:       #1a1a2e;
+  --paper:     #fdfaf5;
+  --cream:     #f5f0e8;
+  --teal:      #1a6b6b;
+  --teal-lt:   #e6f4f4;
+  --amber:     #c17f24;
+  --amber-lt:  #fdf3e0;
+  --red:       #8b2020;
+  --red-lt:    #fdf0f0;
+  --green:     #1a5e1a;
+  --green-lt:  #f0f8f0;
+  --grey:      #6b6b6b;
+  --grey-lt:   #f4f4f4;
+  --border:    #ddd5c5;
+  --sidebar-w: 220px;
+  --content-w: 760px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; font-size: 17px; }
+
+body {
+  font-family: 'Source Serif 4', Georgia, serif;
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.75;
+  display: flex;
+}
+
+/* ── SIDEBAR ── */
+nav#sidebar {
+  width: var(--sidebar-w);
+  min-height: 100vh;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--ink);
+  color: #c8cdd8;
+  padding: 2rem 0;
+  flex-shrink: 0;
+}
+
+nav#sidebar .nav-brand {
+  padding: 0 1.4rem 1.6rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 1rem;
+}
+
+nav#sidebar .nav-brand h2 {
+  font-family: 'Crimson Pro', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+nav#sidebar .nav-brand p {
+  font-size: 0.72rem;
+  color: #8090a8;
+  margin-top: 0.2rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+nav#sidebar a {
+  display: block;
+  padding: 0.35rem 1.4rem;
+  color: #a0aab8;
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.01em;
+  transition: all 0.15s;
+  border-left: 2px solid transparent;
+}
+
+nav#sidebar a:hover {
+  color: #fff;
+  border-left-color: var(--amber);
+  background: rgba(255,255,255,0.04);
+}
+
+nav#sidebar .nav-section {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #505870;
+  padding: 0.9rem 1.4rem 0.2rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── MAIN CONTENT ── */
+main {
+  flex: 1;
+  max-width: calc(var(--content-w) + 8rem);
+  margin: 0 auto;
+  padding: 3rem 4rem;
+}
+
+/* ── HEADER ── */
+header.doc-header {
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 2rem;
+  margin-bottom: 3rem;
+}
+
+header.doc-header .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--teal);
+  margin-bottom: 0.8rem;
+}
+
+header.doc-header h1 {
+  font-family: 'Crimson Pro', serif;
+  font-size: 2.4rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+  color: var(--ink);
+}
+
+header.doc-header .subtitle {
+  font-family: 'Crimson Pro', serif;
+  font-size: 1.15rem;
+  font-style: italic;
+  color: var(--grey);
+  margin-bottom: 1.2rem;
+}
+
+header.doc-header .meta {
+  display: flex;
+  gap: 2rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--grey);
+}
+
+/* ── SECTIONS ── */
+section {
+  margin-bottom: 3.5rem;
+}
+
+.chapter-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--amber);
+  margin-bottom: 0.4rem;
+}
+
+h2 {
+  font-family: 'Crimson Pro', serif;
+  font-size: 1.9rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.4rem;
+  margin-bottom: 1.2rem;
+  color: var(--ink);
+}
+
+h3 {
+  font-family: 'Crimson Pro', serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 2rem 0 0.7rem;
+  color: var(--teal);
+}
+
+h4 {
+  font-family: 'Source Serif 4', serif;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1.4rem 0 0.4rem;
+  color: var(--ink);
+}
+
+p { margin-bottom: 0.9rem; }
+
+ul, ol { padding-left: 1.6rem; margin-bottom: 0.9rem; }
+li { margin-bottom: 0.3rem; }
+
+/* ── HIGHLIGHT BOXES ── */
+.box {
+  border-radius: 4px;
+  padding: 1rem 1.3rem;
+  margin: 1.2rem 0;
+  font-size: 0.93rem;
+}
+
+.box-problem {
+  background: var(--red-lt);
+  border-left: 3px solid var(--red);
+}
+
+.box-key {
+  background: var(--amber-lt);
+  border-left: 3px solid var(--amber);
+}
+
+.box-insight {
+  background: var(--teal-lt);
+  border-left: 3px solid var(--teal);
+}
+
+.box-result {
+  background: var(--green-lt);
+  border-left: 3px solid var(--green);
+}
+
+.box-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+  margin-bottom: 0.4rem;
+}
+
+.box-problem .box-title { color: var(--red); }
+.box-key    .box-title { color: var(--amber); }
+.box-insight .box-title { color: var(--teal); }
+.box-result  .box-title { color: var(--green); }
+
+/* ── PROOFS ── */
+details.proof {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin: 1rem 0;
+  background: var(--cream);
+}
+
+details.proof summary {
+  padding: 0.7rem 1.1rem;
+  cursor: pointer;
+  font-family: 'Source Serif 4', serif;
+  font-weight: 600;
+  font-size: 0.92rem;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  user-select: none;
+}
+
+details.proof summary::before {
+  content: "▶";
+  font-size: 0.7rem;
+  color: var(--teal);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+details.proof[open] summary::before {
+  transform: rotate(90deg);
+}
+
+details.proof .proof-body {
+  padding: 0.2rem 1.3rem 1.1rem 1.3rem;
+  font-size: 0.93rem;
+  border-top: 1px solid var(--border);
+}
+
+.proof-step {
+  display: flex;
+  gap: 0.8rem;
+  margin: 0.5rem 0;
+  align-items: baseline;
+}
+
+.proof-step .step-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--teal);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.qed {
+  text-align: right;
+  font-style: italic;
+  color: var(--grey);
+  margin-top: 0.8rem;
+  font-size: 0.88rem;
+}
+
+/* ── TABLES ── */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  font-size: 0.88rem;
+}
+
+th {
+  background: var(--ink);
+  color: #fff;
+  padding: 0.5rem 0.8rem;
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+}
+
+td {
+  padding: 0.45rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+tr:nth-child(even) td { background: var(--cream); }
+
+.cell-center { text-align: center; }
+.cell-num { font-family: 'JetBrains Mono', monospace; text-align: right; }
+.cell-check { color: var(--green); font-weight: bold; text-align: center; }
+.cell-cross { color: var(--red); font-weight: bold; text-align: center; }
+.cell-highlight { background: #fef9e7 !important; font-weight: 600; }
+.cell-diff-pos { color: var(--green); font-family: 'JetBrains Mono', monospace; }
+.cell-diff-neg { color: var(--red); font-family: 'JetBrains Mono', monospace; }
+.cell-diff-big { background: var(--amber-lt) !important; font-weight: 700; }
+
+/* Matrix table */
+.matrix-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0.6rem 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.matrix-label {
+  font-family: 'Source Serif 4', serif;
+  font-size: 0.9rem;
+}
+
+.matrix-bracket {
+  font-size: 2.8rem;
+  line-height: 1;
+  color: var(--grey);
+  font-weight: 100;
+}
+
+.matrix-data {
+  display: grid;
+  gap: 0.25rem 1rem;
+}
+
+.matrix-data .mrow {
+  display: flex;
+  gap: 1rem;
+}
+
+.matrix-data span {
+  min-width: 4.5rem;
+  text-align: right;
+}
+
+.matrix-data .highlight-val {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+/* ── PSEUDOCODE ── */
+.pseudo-block {
+  background: #1e2030;
+  color: #cdd6f4;
+  border-radius: 6px;
+  padding: 1.2rem 1.4rem;
+  margin: 1rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 1.8;
+  overflow-x: auto;
+}
+
+.pseudo-block .kw    { color: #89b4fa; }
+.pseudo-block .fn    { color: #a6e3a1; }
+.pseudo-block .cmt   { color: #585b70; font-style: italic; }
+.pseudo-block .num   { color: #fab387; }
+.pseudo-block .var   { color: #f5c2e7; }
+.pseudo-block .op    { color: #89dceb; }
+.pseudo-block .step  { color: #cba6f7; font-weight: 500; }
+
+/* ── STEP CARDS ── */
+.step-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin: 1.2rem 0;
+}
+
+.step-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.step-card .step-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 1rem;
+  background: var(--ink);
+  color: #fff;
+}
+
+.step-card .step-number {
+  background: var(--amber);
+  color: var(--ink);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.75rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.step-card .step-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+}
+
+.step-card .step-body {
+  padding: 0.9rem 1.1rem;
+  background: var(--paper);
+  font-size: 0.91rem;
+}
+
+.step-card .step-body .formula {
+  background: var(--cream);
+  border-left: 2px solid var(--teal);
+  padding: 0.4rem 0.8rem;
+  margin: 0.5rem 0;
+  border-radius: 0 3px 3px 0;
+  font-size: 0.95rem;
+}
+
+.step-card .step-body .result-line {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  background: var(--green-lt);
+  padding: 0.35rem 0.7rem;
+  border-radius: 3px;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.step-card .step-body .result-line .rlabel {
+  font-weight: 600;
+  color: var(--green);
+  flex-shrink: 0;
+}
+
+/* ── COMPARISON BAR CHART ── */
+.bar-chart {
+  margin: 1rem 0;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.6rem;
+  gap: 0.7rem;
+}
+
+.bar-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  width: 7rem;
+  flex-shrink: 0;
+  text-align: right;
+  color: var(--grey);
+}
+
+.bar-track {
+  flex: 1;
+  height: 1.1rem;
+  background: var(--cream);
+  border-radius: 2px;
+  position: relative;
+  overflow: visible;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  padding-left: 0.4rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: #fff;
+  font-weight: 600;
+  transition: width 0.4s ease;
+  white-space: nowrap;
+}
+
+.bar-fill.geo   { background: var(--teal); }
+.bar-fill.learn { background: var(--amber); }
+
+/* ── FLOWCHART ── */
+.flowchart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin: 1.5rem auto;
+  max-width: 520px;
+}
+
+.flow-node {
+  width: 100%;
+  padding: 0.55rem 1.1rem;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-family: 'Source Serif 4', serif;
+}
+
+.flow-node.input  { background: var(--ink); color: #fff; }
+.flow-node.process{ background: var(--teal-lt); border: 1px solid var(--teal); color: var(--ink); }
+.flow-node.gate   { background: var(--amber-lt); border: 1px solid var(--amber); }
+.flow-node.output { background: var(--green-lt); border: 2px solid var(--green); font-weight: 600; }
+.flow-node.math   { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+
+.flow-arrow {
+  color: var(--grey);
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.flow-split {
+  display: flex;
+  width: 100%;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.flow-split .flow-branch {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* ── PROPOSAL TABLE ── */
+.novelty-table th { font-size: 0.68rem; padding: 0.4rem 0.6rem; }
+.novelty-table td { font-size: 0.82rem; padding: 0.35rem 0.6rem; }
+
+/* ── ABLATION TABLE ── */
+.ablation td:first-child { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+
+/* ── PRINT ── */
+@media print {
+  nav#sidebar { display: none; }
+  main { padding: 1.5rem 2rem; max-width: 100%; }
+  details.proof { break-inside: avoid; }
+  .step-card { break-inside: avoid; }
+  h2 { break-before: page; }
+  header.doc-header h2 { break-before: auto; }
+}
+
+/* ── SCROLLBAR ── */
+nav#sidebar::-webkit-scrollbar { width: 4px; }
+nav#sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+.divider { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+.page-num { color: var(--grey); font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; }
+
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.83em;
+  background: var(--grey-lt);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  color: var(--teal);
+}
+
+/* ── HAMBURGER ── */
+#hamburger {
+  display: none;
+  position: fixed;
+  top: 0.9rem;
+  left: 0.9rem;
+  z-index: 200;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  width: 2.4rem;
+  height: 2.4rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+#overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 150;
+}
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+
+  html { font-size: 15px; }
+
+  body { display: block; }
+
+  /* Hamburger visible */
+  #hamburger { display: flex; }
+
+  /* Sidebar becomes off-canvas drawer */
+  nav#sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 160;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    width: 240px;
+    min-height: 100%;
+  }
+
+  nav#sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 20px rgba(0,0,0,0.3);
+  }
+
+  #overlay.active { display: block; }
+
+  /* Main content full width */
+  main {
+    padding: 3.5rem 1.2rem 2rem;
+    max-width: 100%;
+  }
+
+  /* Header adjustments */
+  header.doc-header h1 { font-size: 1.7rem; }
+  header.doc-header .meta {
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  h2 { font-size: 1.55rem; }
+  h3 { font-size: 1.15rem; }
+
+  /* Tables: horizontal scroll */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table td, table th {
+    white-space: normal;
+    min-width: 90px;
+  }
+
+  /* Matrix: scroll on overflow */
+  .matrix-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.3rem;
+    gap: 0.3rem;
+  }
+
+  /* Flowchart: single column */
+  .flow-split {
+    flex-direction: column;
+  }
+
+  .flow-split .flow-branch {
+    width: 100%;
+  }
+
+  /* Pseudo-block: already scrollable, just ensure font size */
+  .pseudo-block { font-size: 0.74rem; }
+
+  /* Proof steps */
+  .proof-step { flex-direction: column; gap: 0.2rem; }
+  .proof-step .step-num { margin-top: 0; }
+
+  /* Step card formula: allow scroll */
+  .step-card .step-body .formula {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Result line: wrap */
+  .step-card .step-body .result-line {
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  /* Bar chart */
+  .bar-row { gap: 0.4rem; }
+  .bar-label { width: 5.5rem; font-size: 0.65rem; }
+
+  /* Box */
+  .box { font-size: 0.88rem; }
+
+  /* MathJax display equations — overflow handled by JS auto-scale, not scrollbar */
+  mjx-container[display="true"] { max-width: 100%; display: block; }
+  mjx-container:not([display="true"]) { overflow-x: visible; }
+
+  /* Prevent global CSS reset from bleeding into MathJax SVG internals */
+  mjx-container svg { display: inline-block; }
+  mjx-container * { box-sizing: content-box; }
+
+  /* Step number badge */
+  .step-card .step-header { gap: 0.6rem; }
+  .step-card .step-title { font-size: 0.72rem; }
+
+  /* Navigation section label */
+  .nav-section { padding-top: 0.7rem; }
+
+  /* Novelty table: allow smaller font */
+  .novelty-table th, .novelty-table td { font-size: 0.75rem; padding: 0.3rem 0.4rem; }
+}
+
+/* ── TABLET ── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root { --sidebar-w: 180px; }
+  main { padding: 2.5rem 2rem; }
+  h2 { font-size: 1.65rem; }
+}
+</style>
+</head>
+<body>
+
+<button id="hamburger" aria-label="Open navigation" onclick="toggleNav()">☰</button>
+<div id="overlay" onclick="toggleNav()"></div>
+
+<!-- ═══ SIDEBAR ═══ -->
+<nav id="sidebar">
+  <div class="nav-brand">
+    <h2>CASA</h2>
+    <p>Progress Report</p>
+  </div>
+
+  <div class="nav-section">Overview</div>
+  <a href="#ch1" onclick="closeNav()">1. The Problem</a>
+  <a href="#ch2" onclick="closeNav()">2. Architecture</a>
+
+  <div class="nav-section">Core</div>
+  <a href="#ch3" onclick="closeNav()">3. Proofs</a>
+  <a href="#ch4" onclick="closeNav()">4. Worked Example</a>
+
+  <div class="nav-section">Context</div>
+  <a href="#ch5" onclick="closeNav()">5. Novelty</a>
+  <a href="#ch6" onclick="closeNav()">6. Validation Plan</a>
+
+  <div class="nav-section">Appendix</div>
+  <a href="#appA" onclick="closeNav()">A. Gradients</a>
+  <a href="#appB" onclick="closeNav()">B. References</a>
+</nav>
+
+<!-- ═══ MAIN ═══ -->
+<main>
+
+<!-- ── HEADER ── -->
+<header class="doc-header">
+  <div class="label">Progress Report · LSTM-GSTARX Research</div>
+  <h1>Climate-Adaptive Spatial Attention</h1>
+  <div class="subtitle">Adaptive Spatial Weighting for Rainfall Forecasting under ENSO/IOD Variability</div>
+  <div class="meta">
+    <span>Author: Arif Nurwahid &nbsp;·&nbsp; arif@lms.id &nbsp;·&nbsp; ORCID: 0009-0005-8802-9629</span>
+    <span>Supervisor: Prof. Masaya Matsuura — Ehime University</span>
+    <span>Date: April 2026</span>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════
+     CHAPTER 1 — MOTIVATION
+════════════════════════════════════════════ -->
+<section id="ch1">
+<div class="chapter-label">Chapter 1</div>
+<h2>The Problem: Why Static Spatial Weights Fail</h2>
+
+<h3>1.1 Current Model</h3>
+
+<p>The existing LSTM-GSTARX model computes a spatial lag term at each time step as:</p>
+
+<p>\[ \mathbf{F}_{t-1}^* = \mathbf{W}_{\text{static}} \cdot \mathbf{Y}_{t-1}^* \]</p>
+
+<p>where \(\mathbf{W}_{\text{static}} \in \mathbb{R}^{N \times N}\) is computed once from inverse Haversine distances between province centroids and <strong>frozen for the entire study period</strong>.</p>
+
+<div class="box box-problem">
+  <div class="box-title">Core Assumption (Physically Wrong)</div>
+  The spatial influence that province \(j\) exerts on province \(i\) is constant over time — regardless of whether Indonesia is experiencing a normal monsoon, a severe El Niño, or an extreme positive IOD event.
+</div>
+
+<h3>1.2 Why This Assumption Fails</h3>
+
+<p>Three climate mechanisms cause spatial dependencies to change over time:</p>
+
+<ol>
+  <li><strong>ENSO events</strong> weaken the Walker Circulation, shifting the ascending branch of convection away from the Maritime Continent. Provinces that normally co-vary due to shared monsoon patterns can become decoupled, while geographically distant provinces may become coherent through large-scale teleconnections.</li>
+  <li><strong>IOD events</strong> alter the SST gradient across the Indian Ocean, changing moisture transport toward western Indonesia. This differentially affects western provinces (Sumatra, Java) vs. eastern provinces (Papua, Maluku).</li>
+  <li><strong>Monsoon transitions</strong> (west vs. east monsoon) redirect moisture flow, reversing the direction of spatial influence between regions.</li>
+</ol>
+
+<div class="box box-insight">
+  <div class="box-title">Physical Intuition</div>
+  During a strong El Niño (e.g., 1997–98 or 2015–16), Papua tends to remain relatively wet while Java experiences severe drought. The spatial dependency between these two regions flips sign. A static weight matrix cannot represent this.
+</div>
+
+<h3>1.3 What We Need</h3>
+
+<p>We need a weight matrix \(\mathbf{W}_t\) that:</p>
+<ol>
+  <li>Updates at every time step \(t\)</li>
+  <li>Responds to ENSO and IOD conditions at time \(t\)</li>
+  <li>Preserves geographic structure as a regularization anchor during normal conditions</li>
+  <li>Adds minimal parameters (to avoid overfitting with \(T = 240\) monthly observations)</li>
+</ol>
+
+<p>This is what <strong>CASA (Climate-Adaptive Spatial Attention)</strong> provides.</p>
+</section>
+
+<hr class="divider">
+
+<!-- ════════════════════════════════════════════
+     CHAPTER 2 — ARCHITECTURE
+════════════════════════════════════════════ -->
+<section id="ch2">
+<div class="chapter-label">Chapter 2</div>
+<h2>CASA Architecture</h2>
+
+<h3>2.1 Overview</h3>
+
+<p>CASA replaces the single static matrix \(\mathbf{W}_{\text{static}}\) with a three-stage mechanism that produces a fresh \(\mathbf{W}_t\) at each time step. The rest of the LSTM-GSTARX architecture is unchanged.</p>
+
+<!-- FLOWCHART -->
+<div class="flowchart">
+  <div class="flow-node input">
+    Inputs at time <em>t</em>:<br>
+    <small>Rainfall \(\mathbf{Y}_{t-1}\) &nbsp;|&nbsp; Niño 3.4 &nbsp;|&nbsp; DMI</small>
+  </div>
+  <div class="flow-arrow">↓</div>
+  <div class="flow-node process math">Stage 1: Climate Context Vector<br>\(\mathbf{c}_t = \tanh(\mathbf{W}_c[\bar{Y}, \sigma_Y, \text{Niño}, \text{DMI}]^\top + \mathbf{b}_c)\)</div>
+  <div class="flow-arrow">↓</div>
+  <div class="flow-split">
+    <div class="flow-branch">
+      <div class="flow-node process math" style="width:100%;">Stage 2a: Attention Scores<br>\(e_{ij}^t = \mathbf{v}_a^\top \text{LReLU}(\mathbf{W}_a[Y_i, Y_j, |Y_i\!-\!Y_j|, \mathbf{c}_t] + \mathbf{b}_a)\)<br>→ softmax → \(\mathbf{A}_{\text{learned}}^t\)</div>
+    </div>
+    <div class="flow-branch">
+      <div class="flow-node gate math" style="width:100%;">Stage 2b: Blending Gate<br>\(\alpha_t = \sigma(\mathbf{w}_\alpha^\top \mathbf{c}_t + b_\alpha)\)</div>
+    </div>
+  </div>
+  <div class="flow-arrow">↓</div>
+  <div class="flow-node process math">Stage 3: Adaptive Blending<br>\(\mathbf{W}_t = \alpha_t \cdot \mathbf{A}_{\text{geo}} + (1-\alpha_t) \cdot \mathbf{A}_{\text{learned}}^t\)</div>
+  <div class="flow-arrow">↓</div>
+  <div class="flow-node output">\(\mathbf{F}_{t-1}^* = \mathbf{W}_t \cdot \mathbf{Y}_{t-1}^*\) → LSTM input</div>
+</div>
+
+<h3>2.2 Stage 1 — Climate Context Vector</h3>
+
+<p>We first compress the current climate state into a low-dimensional summary vector \(\mathbf{c}_t \in \mathbb{R}^{d_c}\):</p>
+
+<p>\[ \mathbf{c}_t = \tanh\!\left(\mathbf{W}_c \begin{bmatrix} \bar{Y}_{t-1} \\ \sigma_{Y_{t-1}} \\ \text{Niño3.4}_t \\ \text{DMI}_t \end{bmatrix} + \mathbf{b}_c\right) \]</p>
+
+<p>where \(\mathbf{W}_c \in \mathbb{R}^{d_c \times 4}\), \(\mathbf{b}_c \in \mathbb{R}^{d_c}\), \(d_c = 16\).</p>
+
+<table>
+  <tr><th>Input</th><th>What it encodes</th><th>Why include it</th></tr>
+  <tr><td>\(\bar{Y}_{t-1}\)</td><td>Mean rainfall across all provinces last month</td><td>Is Indonesia generally wet or dry right now? A nationally dry mean signals the model that spatial weight should perhaps shift away from geographic defaults.</td></tr>
+  <tr><td>\(\sigma_{Y_{t-1}}\)</td><td>Standard deviation of rainfall across provinces</td><td>Is the anomaly spatially concentrated or uniform? High σ means some provinces are very wet while others are very dry — exactly when geography may mislead and adaptive weights matter most.</td></tr>
+  <tr><td>Niño 3.4\(_t\)</td><td>ENSO phase (Pacific SST anomaly)</td><td>Walker Circulation strength — primary driver of large-scale spatial rainfall redistribution across Indonesia.</td></tr>
+  <tr><td>DMI\(_t\)</td><td>Indian Ocean Dipole index</td><td>Moisture transport toward western Indonesia — independently modifies spatial patterns especially in Sumatra and Java.</td></tr>
+</table>
+
+<div class="box box-insight" style="font-size:0.88rem;">
+  <div class="box-title">Why Mean and Variance — not raw Y values?</div>
+  <p>We deliberately use <strong>summary statistics</strong> of the rainfall field rather than the full \(\mathbf{Y}_{t-1} \in \mathbb{R}^{38}\) vector for two reasons.</p>
+  <p><strong>(1) Dimensionality.</strong> Including all 38 raw values in \(\mathbf{c}_t\) would make \(\mathbf{W}_c \in \mathbb{R}^{d_c \times 42}\) instead of \(\mathbb{R}^{d_c \times 4}\), adding ~1,500 parameters just for the context encoder — overwhelming the 265-parameter CASA budget and risking overfitting with only \(T = 240\) months of training data.</p>
+  <p><strong>(2) Physical sufficiency.</strong> What matters for determining the climate <em>regime</em> at time \(t\) is not "how much did West Java rain?" (that is a local prediction signal), but rather: "Is the whole country dry or wet? Is rainfall spatially heterogeneous or uniform?" Mean and standard deviation capture exactly these two regime-defining quantities. The full spatial detail is handled separately by the per-pair attention scores \(e_{ij}^t\) in Stage 2, which do receive individual \(Y_i\) and \(Y_j\) values.</p>
+</div>
+
+<h3>2.3 Stage 2a — Dynamic Attention Scores</h3>
+
+<p>For every pair of provinces \((i, j)\), we compute a relevance score at time \(t\):</p>
+
+<p>\[ e_{ij}^t = \mathbf{v}_a^\top \cdot \text{LeakyReLU}\!\left(\mathbf{W}_a \begin{bmatrix} Y_{t-1,i} \\ Y_{t-1,j} \\ |Y_{t-1,i} - Y_{t-1,j}| \\ \mathbf{c}_t \end{bmatrix} + \mathbf{b}_a\right) \]</p>
+
+<p>where \(\mathbf{W}_a \in \mathbb{R}^{d_a \times (3+d_c)}\), \(\mathbf{v}_a \in \mathbb{R}^{d_a}\), \(d_a = 8\), and LeakyReLU uses negative slope \(\gamma = 0.2\).</p>
+
+<div class="box box-key">
+  <div class="box-title">Design Choice: GATv2 Ordering</div>
+  The operand order — LeakyReLU applied <em>before</em> the final linear projection \(\mathbf{v}_a^\top\) — follows GATv2 (Brody et al., 2022). This makes the attention <strong>truly dynamic</strong>: the ranking of province \(j\)'s relevance to province \(i\) depends on the specific combination of \(i\), \(j\), and \(\mathbf{c}_t\). The original GAT ordering (Veličković et al., 2018) produces static rankings — see Proof A in Chapter 3.
+</div>
+
+<h4>LeakyReLU — The Nonlinearity Inside the Attention MLP</h4>
+
+<p>Before the attention score is projected to a scalar by \(\mathbf{v}_a^\top\), the intermediate vector passes through a <strong>LeakyReLU</strong> nonlinearity. Understanding what this does — and why it is used instead of alternatives — is important for following the gradient flow during training.</p>
+
+<h4>Step 1: What is ReLU?</h4>
+
+<p>The Rectified Linear Unit (ReLU) is the simplest nonlinearity widely used in deep learning:</p>
+
+<p>\[ \text{ReLU}(x) = \max(0, x) = \begin{cases} x & \text{if } x > 0 \\ 0 & \text{if } x \leq 0 \end{cases} \]</p>
+
+<p>ReLU is fast to compute and avoids the vanishing gradient problem that plagued older activations like sigmoid and tanh (which saturate — their gradients approach zero for large inputs). For positive inputs, ReLU's gradient is exactly 1, so gradients flow without shrinking.</p>
+
+<h4>Step 2: The "Dying ReLU" Problem</h4>
+
+<div class="box box-problem">
+  <div class="box-title">The Problem with Plain ReLU</div>
+  <p>ReLU outputs exactly <strong>zero</strong> for any negative input, and its gradient is also zero there. If a neuron's input happens to be consistently negative during training, the gradient flowing through it becomes zero — the neuron stops learning entirely. It is said to have "died."</p>
+  <p>Once dead, the neuron cannot recover, because with zero gradient the weights never update. In a network with many neurons, some fraction can die and remain permanently inactive, reducing the model's effective capacity.</p>
+</div>
+
+<h4>Step 3: LeakyReLU — The Fix</h4>
+
+<p>LeakyReLU keeps a small nonzero slope \(\gamma\) for negative inputs (Maas et al., 2013):</p>
+
+<p>\[ \text{LeakyReLU}(x) = \begin{cases} x & \text{if } x > 0 \\ \gamma x & \text{if } x \leq 0 \end{cases} \]</p>
+
+<p>The gradient is now:</p>
+
+<p>\[ \frac{d}{dx}\text{LeakyReLU}(x) = \begin{cases} 1 & \text{if } x > 0 \\ \gamma & \text{if } x < 0 \end{cases} \]</p>
+
+<p>The gradient is never zero — even for negative inputs, it equals \(\gamma\). Neurons cannot die.</p>
+
+<!-- SVG visualization of ReLU vs LeakyReLU -->
+<div style="margin: 1.2rem 0; overflow-x: auto;">
+<svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" style="max-width:560px;width:100%;display:block;font-family:'JetBrains Mono',monospace;">
+  <!-- Background -->
+  <rect width="560" height="220" fill="#fdfaf5" rx="6"/>
+
+  <!-- ── Left panel: ReLU ── -->
+  <text x="120" y="18" text-anchor="middle" font-size="11" fill="#1a1a2e" font-weight="600">ReLU(x)</text>
+
+  <!-- Grid lines -->
+  <line x1="30" y1="110" x2="230" y2="110" stroke="#ddd5c5" stroke-width="1"/>
+  <line x1="130" y1="20" x2="130" y2="200" stroke="#ddd5c5" stroke-width="1"/>
+
+  <!-- Axis labels -->
+  <text x="228" y="114" font-size="9" fill="#6b6b6b">x</text>
+  <text x="133" y="18" font-size="9" fill="#6b6b6b">y</text>
+  <text x="45"  y="114" font-size="9" fill="#6b6b6b">−2</text>
+  <text x="75"  y="114" font-size="9" fill="#6b6b6b">−1</text>
+  <text x="155" y="114" font-size="9" fill="#6b6b6b">1</text>
+  <text x="185" y="114" font-size="9" fill="#6b6b6b">2</text>
+  <text x="120" y="75"  font-size="9" fill="#6b6b6b" text-anchor="end">1</text>
+  <text x="120" y="35"  font-size="9" fill="#6b6b6b" text-anchor="end">2</text>
+
+  <!-- ReLU curve: flat at 0 for x<0, linear for x>0 -->
+  <!-- x range: -2 to 2, mapped to pixel 50..210, zero at x=130 -->
+  <!-- y range: 0 to 2, mapped to pixel 110..30 (inverted) -->
+  <polyline points="50,110 130,110 210,30" fill="none" stroke="#8b2020" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Dying zone annotation -->
+  <rect x="50" y="100" width="80" height="18" fill="#fdf0f0" rx="3" opacity="0.9"/>
+  <text x="90" y="113" text-anchor="middle" font-size="9" fill="#8b2020">gradient = 0 ☠</text>
+
+  <!-- Gradient=1 annotation -->
+  <text x="175" y="58" font-size="9" fill="#8b2020">grad = 1</text>
+
+  <!-- ── Right panel: LeakyReLU ── -->
+  <text x="380" y="18" text-anchor="middle" font-size="11" fill="#1a1a2e" font-weight="600">LeakyReLU(x, γ=0.2)</text>
+
+  <!-- Grid lines -->
+  <line x1="290" y1="110" x2="490" y2="110" stroke="#ddd5c5" stroke-width="1"/>
+  <line x1="390" y1="20"  x2="390" y2="200" stroke="#ddd5c5" stroke-width="1"/>
+
+  <!-- Axis labels -->
+  <text x="488" y="114" font-size="9" fill="#6b6b6b">x</text>
+  <text x="393" y="18"  font-size="9" fill="#6b6b6b">y</text>
+  <text x="305" y="114" font-size="9" fill="#6b6b6b">−2</text>
+  <text x="335" y="114" font-size="9" fill="#6b6b6b">−1</text>
+  <text x="415" y="114" font-size="9" fill="#6b6b6b">1</text>
+  <text x="445" y="114" font-size="9" fill="#6b6b6b">2</text>
+  <text x="380" y="75"  font-size="9" fill="#6b6b6b" text-anchor="end">1</text>
+
+  <!-- LeakyReLU curve: slight negative slope for x<0, linear for x>0 -->
+  <!-- γ=0.2: at x=-2 → y=-0.4, mapped: y=-0.4 → pixel = 110 + 0.4*40 = 126 -->
+  <!-- at x=2 → y=2, pixel = 110 - 2*40 = 30 -->
+  <polyline points="310,126 390,110 470,30" fill="none" stroke="#1a6b6b" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Leaky zone annotation -->
+  <rect x="305" y="118" width="80" height="18" fill="#e6f4f4" rx="3" opacity="0.9"/>
+  <text x="345" y="131" text-anchor="middle" font-size="9" fill="#1a6b6b">grad = γ = 0.2 ✓</text>
+
+  <!-- Gradient=1 annotation -->
+  <text x="435" y="58" font-size="9" fill="#1a6b6b">grad = 1</text>
+
+  <!-- Divider -->
+  <line x1="270" y1="10" x2="270" y2="210" stroke="#ddd5c5" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- Bottom labels -->
+  <text x="120" y="215" text-anchor="middle" font-size="9" fill="#6b6b6b">❌ Neurons can die (gradient = 0)</text>
+  <text x="390" y="215" text-anchor="middle" font-size="9" fill="#1a6b6b">✓ Gradient always nonzero</text>
+</svg>
+</div>
+
+<h4>Step 4: Numerical Example</h4>
+
+<p>Suppose an intermediate attention vector \(\mathbf{z} = [-0.5, \; 1.2, \; -0.1, \; 0.8]\) passes through LeakyReLU with \(\gamma = 0.2\):</p>
+
+<table style="max-width:440px;">
+  <tr><th>Input \(z_k\)</th><th>Condition</th><th>Output</th><th>Gradient</th></tr>
+  <tr><td class="cell-num">−0.50</td><td>negative</td><td class="cell-num cell-diff-neg">−0.10</td><td class="cell-num">0.2</td></tr>
+  <tr><td class="cell-num">+1.20</td><td>positive</td><td class="cell-num cell-diff-pos">+1.20</td><td class="cell-num">1.0</td></tr>
+  <tr><td class="cell-num">−0.10</td><td>negative</td><td class="cell-num cell-diff-neg">−0.02</td><td class="cell-num">0.2</td></tr>
+  <tr><td class="cell-num">+0.80</td><td>positive</td><td class="cell-num cell-diff-pos">+0.80</td><td class="cell-num">1.0</td></tr>
+</table>
+
+<p>Negative values are kept — scaled down to 20% of their original magnitude — rather than being killed. All gradients are nonzero, so backpropagation can update every weight.</p>
+
+<h4>Step 5: Why \(\gamma = 0.2\) Specifically?</h4>
+
+<div class="box box-key">
+  <div class="box-title">Convention from GAT (Veličković et al., 2018)</div>
+  <p>The slope \(\gamma = 0.2\) was chosen by the original GAT paper and has become a convention in graph attention architectures. It represents a balance:</p>
+  <ul style="margin-top:0.4rem;">
+    <li><strong>Too small</strong> (\(\gamma \approx 0\)): approaches plain ReLU, dying neuron risk returns</li>
+    <li><strong>Too large</strong> (\(\gamma \approx 1\)): approaches a linear function, the nonlinearity is too weak to separate complex patterns</li>
+    <li><strong>\(\gamma = 0.2\):</strong> negative inputs contribute 20% of their magnitude — enough to keep gradients alive, small enough to still distinguish positive from negative activations meaningfully</li>
+  </ul>
+  <p style="margin-top:0.5rem;">In CASA, we follow this same convention to align with GAT/GATv2 literature and ensure fair comparison.</p>
+</div>
+
+<h4>Why Not Use tanh or Sigmoid Here?</h4>
+
+<p>The attention MLP is a <em>score function</em>, not a probability output. We want scores \(e_{ij}^t\) to span a wide real-valued range so that softmax can create meaningful contrasts between pairs. Both sigmoid (output ∈ (0,1)) and tanh (output ∈ (−1, 1)) saturate — their gradients approach zero for large inputs, making training slow. LeakyReLU is unbounded above, so scores can grow freely and softmax normalization creates sharp, discriminative attention weights.</p>
+
+<p style="font-size:0.84rem;color:var(--grey);">
+  <em>Reference:</em> Maas, A. L., Hannun, A. Y., &amp; Ng, A. Y. (2013). "Rectifier Nonlinearities Improve Neural Network Acoustic Models." <em>ICML Workshop on Deep Learning for Audio, Speech, and Language Processing</em>. — Original LeakyReLU proposal. The slope 0.2 convention is from Veličković et al. (2018), GAT.
+</p>
+
+<p>Scores are normalized via full-scope softmax over all \(N\) provinces:</p>
+
+<p>\[ \tilde{\alpha}_{ij}^t = \frac{\exp(e_{ij}^t)}{\displaystyle\sum_{k=1}^{N} \exp(e_{ik}^t)} \]</p>
+
+<p>This produces \(\mathbf{A}_{\text{learned}}^t \in \mathbb{R}^{N \times N}\) — a row-stochastic matrix of learned spatial attention weights.</p>
+
+<h3>2.4 Stage 2b — Climate-Conditioned Blending Gate</h3>
+
+<p>\[ \alpha_t = \sigma\!\left(\mathbf{w}_\alpha^\top \mathbf{c}_t + b_\alpha\right) \in (0, 1) \]</p>
+
+<p>The gate \(\alpha_t\) is a <em>scalar</em> that answers: "How much should the model trust geography right now?"</p>
+
+<table>
+  <tr><th>Climate condition</th><th>Expected \(\alpha_t\)</th><th>Interpretation</th></tr>
+  <tr><td>Normal / neutral ENSO</td><td class="cell-num">≈ 0.7 – 0.9</td><td>Geography dominates; spatial patterns are as expected</td></tr>
+  <tr><td>Moderate El Niño (Niño 3.4 ≈ 1.2)</td><td class="cell-num">≈ 0.3 – 0.5</td><td>Learned patterns become significant</td></tr>
+  <tr><td>Strong El Niño (Niño 3.4 ≥ 1.8)</td><td class="cell-num">≈ 0.1 – 0.3</td><td>Teleconnection patterns dominate over geography</td></tr>
+</table>
+
+<h3>2.5 Stage 3 — Adaptive Weight Matrix</h3>
+
+<p>\[ \mathbf{W}_t = \alpha_t \cdot \mathbf{A}_{\text{geo}} + (1-\alpha_t) \cdot \mathbf{A}_{\text{learned}}^t \]</p>
+
+<p>The final spatial lag passed to the LSTM is then:</p>
+<p>\[ \mathbf{F}_{t-1}^* = \mathbf{W}_t \cdot \mathbf{Y}_{t-1}^* \]</p>
+
+<h3>2.6 Algorithm Summary</h3>
+
+<div class="pseudo-block">
+<span class="cmt">-- CASA Forward Pass at each time step t --</span><br>
+<br>
+<span class="cmt">-- Stage 1: Summarize climate state --</span><br>
+<span class="kw">COMPUTE</span> Ȳ = <span class="fn">mean</span>(Y_{t-1}),  σ_Y = <span class="fn">std</span>(Y_{t-1})<br>
+input_c ← [Ȳ, σ_Y, Niño3.4_t, DMI_t]<br>
+<span class="var">c_t</span> ← <span class="fn">tanh</span>(W_c · input_c + b_c)   <span class="cmt">-- (d_c,)</span><br>
+<br>
+<span class="cmt">-- Stage 2a: Attention scores for all N² province pairs --</span><br>
+<span class="kw">FOR</span> each pair (i, j) in {1,...,N}²:<br>
+  &nbsp;&nbsp;input_ij ← [Y_i, Y_j, |Y_i - Y_j|, c_t]<br>
+  &nbsp;&nbsp;e_ij ← v_a · <span class="fn">LeakyReLU</span>(W_a · input_ij + b_a, γ=0.2)<br>
+ã_ij ← <span class="fn">softmax_row</span>(e_ij)           <span class="cmt">-- row-wise softmax</span><br>
+<span class="var">A_learned_t</span> ← matrix of {ã_ij}       <span class="cmt">-- (N × N)</span><br>
+<br>
+<span class="cmt">-- Stage 2b: Blending gate --</span><br>
+<span class="var">α_t</span> ← <span class="fn">sigmoid</span>(w_α · c_t + b_α)  <span class="cmt">-- scalar ∈ (0,1)</span><br>
+<br>
+<span class="cmt">-- Stage 3: Combine --</span><br>
+<span class="var">W_t</span> ← α_t · A_geo + (1 - α_t) · A_learned_t<br>
+<span class="var">F*</span> ← W_t · Y_{t-1}*               <span class="cmt">-- adaptive spatial lag</span><br>
+<br>
+<span class="cmt">-- Pass to LSTM (as before) --</span><br>
+x_t ← [Y*_{t-1}, F*, X*_t]<br>
+ŷ_t ← <span class="fn">LSTM</span>(x_t, h_{t-1}, C_{t-1})
+</div>
+
+<h3>2.7 Parameter Count</h3>
+
+<table>
+  <tr><th>Component</th><th>Parameters</th><th>Count (d_c=16, d_a=8)</th></tr>
+  <tr><td>Context MLP: \(\mathbf{W}_c, \mathbf{b}_c\)</td><td>\(d_c \times 4 + d_c\)</td><td class="cell-num">80</td></tr>
+  <tr><td>Attention MLP: \(\mathbf{W}_a, \mathbf{b}_a, \mathbf{v}_a\)</td><td>\(d_a(3+d_c) + d_a + d_a\)</td><td class="cell-num">168</td></tr>
+  <tr><td>Blending gate: \(\mathbf{w}_\alpha, b_\alpha\)</td><td>\(d_c + 1\)</td><td class="cell-num">17</td></tr>
+  <tr><td><strong>Total CASA</strong></td><td></td><td class="cell-num"><strong>265</strong></td></tr>
+  <tr><td>LSTM (existing)</td><td>\(4H(H+d)+4H\)</td><td class="cell-num">36,608</td></tr>
+  <tr><td><em>CASA overhead</em></td><td></td><td class="cell-num"><em>0.72% of total</em></td></tr>
+</table>
+</section>
+
+<hr class="divider">
+
+<!-- ════════════════════════════════════════════
+     CHAPTER 3 — PROOFS
+════════════════════════════════════════════ -->
+<section id="ch3">
+<div class="chapter-label">Chapter 3</div>
+<h2>Mathematical Properties</h2>
+
+<p>We establish four results. Proofs A and B are foundational (confirm the mechanism is well-defined). Proofs C and D give formal guarantees about model behavior.</p>
+
+<div class="box box-key" style="font-size:0.88rem;">
+  <div class="box-title">Proposition Origins</div>
+  <table style="font-size:0.85rem;margin:0;">
+    <tr><th>Proof</th><th>Status</th><th>Basis</th></tr>
+    <tr><td><strong>A — GAT static attention</strong></td><td>📖 Adapted</td><td>Theorem 1 in Brody, Alon &amp; Yahav (2022). We reproduce the algebraic argument for completeness and to connect it to CASA's design choice.</td></tr>
+    <tr><td><strong>B — Row-stochasticity</strong></td><td>✦ Original</td><td>Mathematical consequence of CASA's specific design (convex combination of two row-stochastic matrices). Not stated elsewhere in the literature for this architecture.</td></tr>
+    <tr><td><strong>C — Subsumption of static model</strong></td><td>✦ Original</td><td>Formal guarantee specific to CASA's blending gate. Analogous arguments appear in GRU (Cho et al., 2014) for special cases of gating, but not in this spatial weighting context.</td></tr>
+    <tr><td><strong>D — Bounded deviation</strong></td><td>✦ Original</td><td>Direct consequence of Proof B and the scalar gate structure. This result establishes the geographic prior as an implicit regularizer — a claim specific to CASA's architecture.</td></tr>
+  </table>
+</div>
+
+<!-- ── PROOF A ── -->
+<h3>Proof A — Why GAT Produces Static Attention</h3>
+
+<p>Understanding this result motivates why CASA uses the GATv2 ordering.</p>
+
+<div class="box box-key">
+  <div class="box-title">Claim (Brody et al., 2022)</div>
+  In the original GAT, for any two query nodes \(i\) and \(i'\), and any two key nodes \(j_1\) and \(j_2\): if \(e_{ij_1} > e_{ij_2}\), then \(e_{i'j_1} > e_{i'j_2}\). That is, the <em>ranking</em> of any pair of nodes never changes regardless of which query node we consider — attention is monotone, hence static.
+</div>
+
+<details class="proof">
+  <summary>Proof A — GAT attention is monotone (static)</summary>
+  <div class="proof-body">
+    <p><strong>Setup.</strong> GAT computes attention scores as:</p>
+    <p>\[ e_{ij}^{\text{GAT}} = \mathbf{a}^\top \text{LeakyReLU}(\mathbf{W}\mathbf{h}_i \,\|\, \mathbf{W}\mathbf{h}_j) \]</p>
+    <p>Partition \(\mathbf{a} = [\mathbf{a}_L \| \mathbf{a}_R]\) where \(\mathbf{a}_L, \mathbf{a}_R\) correspond to the left and right halves of the concatenation.</p>
+
+    <div class="proof-step">
+      <span class="step-num">(1)</span>
+      <span>Since \(\mathbf{W}\mathbf{h}_i\) and \(\mathbf{W}\mathbf{h}_j\) are independent inputs, and LeakyReLU is applied element-wise after concatenation, the output decomposes:</span>
+    </div>
+    <p style="margin-left:2.2rem;">\[ \text{LeakyReLU}(\mathbf{W}\mathbf{h}_i \,\|\, \mathbf{W}\mathbf{h}_j) = [\text{LReLU}(\mathbf{W}\mathbf{h}_i) \,\|\, \text{LReLU}(\mathbf{W}\mathbf{h}_j)] \]</p>
+    <div class="proof-step">
+      <span class="step-num">(2)</span>
+      <span>Therefore:</span>
+    </div>
+    <p style="margin-left:2.2rem;">\[ e_{ij}^{\text{GAT}} = \underbrace{\mathbf{a}_L^\top \text{LReLU}(\mathbf{W}\mathbf{h}_i)}_{g(i)} + \underbrace{\mathbf{a}_R^\top \text{LReLU}(\mathbf{W}\mathbf{h}_j)}_{h(j)} \]</p>
+    <div class="proof-step">
+      <span class="step-num">(3)</span>
+      <span>Now compare two key nodes \(j_1\) vs \(j_2\) for query node \(i\):</span>
+    </div>
+    <p style="margin-left:2.2rem;">\[ e_{ij_1} > e_{ij_2} \iff g(i) + h(j_1) > g(i) + h(j_2) \iff h(j_1) > h(j_2) \]</p>
+    <div class="proof-step">
+      <span class="step-num">(4)</span>
+      <span>The condition \(h(j_1) > h(j_2)\) does not involve \(i\) at all. Therefore, for any other query \(i'\): \(e_{i'j_1} > e_{i'j_2}\) by the same argument. \(\square\)</span>
+    </div>
+    <p><strong>Why GATv2 fixes this.</strong> GATv2 applies the weight matrix <em>before</em> the nonlinearity:</p>
+    <p>\[ e_{ij}^{\text{GATv2}} = \mathbf{v}^\top \text{LeakyReLU}(\mathbf{W}[\mathbf{h}_i \| \mathbf{h}_j]) \]</p>
+    <p>Here \(\mathbf{W}\) sees both \(\mathbf{h}_i\) and \(\mathbf{h}_j\) together before the nonlinearity, creating cross-terms that prevent the additive decomposition. The ranking of \(j_1\) vs \(j_2\) can now change depending on \(i\). ✓</p>
+  </div>
+</details>
+
+<!-- ── PROOF B ── -->
+<h3>Proof B — \(\mathbf{W}_t\) is Row-Stochastic</h3>
+
+<p>This guarantees that \(\mathbf{F}_{t-1}^* = \mathbf{W}_t \cdot \mathbf{Y}_{t-1}^*\) is a valid weighted average.</p>
+
+<div class="box box-insight">
+  <div class="box-title">Proposition 1</div>
+  \(\mathbf{W}_t\) is row-stochastic: \(\sum_j W_t(i,j) = 1\) for all \(i\), and \(W_t(i,j) \geq 0\) for all \(i,j\).
+</div>
+
+<details class="proof">
+  <summary>Proof B — Row-stochasticity of W_t</summary>
+  <div class="proof-body">
+    <p>We verify two properties: non-negativity and row sums equal to 1.</p>
+    <div class="proof-step">
+      <span class="step-num">(1)</span>
+      <span><strong>\(\mathbf{A}_{\text{geo}}\) is row-stochastic</strong> by construction: each entry is a normalized inverse distance weight, hence non-negative, and rows sum to 1.</span>
+    </div>
+    <div class="proof-step">
+      <span class="step-num">(2)</span>
+      <span><strong>\(\mathbf{A}_{\text{learned}}^t\) is row-stochastic</strong> because each row is computed via softmax over all \(N\) entries. Softmax always produces non-negative outputs summing to 1.</span>
+    </div>
+    <div class="proof-step">
+      <span class="step-num">(3)</span>
+      <span><strong>Row sums of \(\mathbf{W}_t\):</strong></span>
+    </div>
+    <p style="margin-left:2.2rem;">\[ \sum_j W_t(i,j) = \alpha_t \underbrace{\sum_j A_{\text{geo}}(i,j)}_{=\,1} + (1-\alpha_t)\underbrace{\sum_j \tilde{\alpha}_{ij}^t}_{=\,1} = \alpha_t + (1-\alpha_t) = 1 \]</p>
+    <div class="proof-step">
+      <span class="step-num">(4)</span>
+      <span><strong>Non-negativity of \(\mathbf{W}_t\):</strong> Since \(\alpha_t \in (0,1)\), both coefficients \(\alpha_t > 0\) and \((1-\alpha_t) > 0\). Since all entries of \(\mathbf{A}_{\text{geo}}\) and \(\mathbf{A}_{\text{learned}}^t\) are non-negative, all entries of \(\mathbf{W}_t\) are non-negative. \(\square\)</span>
+    </div>
+    <p><strong>Interpretation.</strong> \(\mathbf{F}_{t-1}^* = \mathbf{W}_t \cdot \mathbf{Y}_{t-1}^*\) is a convex combination of the normalized rainfall values from all provinces — a weighted average that sums to a meaningful climatological quantity.</p>
+  </div>
+</details>
+
+<!-- ── PROOF C ── -->
+<h3>Proof C — CASA Subsumes the Static Model</h3>
+
+<div class="box box-insight">
+  <div class="box-title">Proposition 2</div>
+  If the optimizer sets \(b_\alpha \to +\infty\), then \(\alpha_t \to 1\) for all \(t\), and CASA reduces exactly to LSTM-GSTARX with \(\mathbf{W}_t = \mathbf{A}_{\text{geo}}\). The static model is a special case of CASA.
+</div>
+
+<details class="proof">
+  <summary>Proof C — Subsumption of the static baseline</summary>
+  <div class="proof-body">
+    <div class="proof-step">
+      <span class="step-num">(1)</span>
+      <span>Recall \(\alpha_t = \sigma(\mathbf{w}_\alpha^\top \mathbf{c}_t + b_\alpha)\) where \(\sigma\) is the sigmoid function.</span>
+    </div>
+    <div class="proof-step">
+      <span class="step-num">(2)</span>
+      <span>The context vector \(\mathbf{c}_t = \tanh(\cdot) \in (-1, 1)^{d_c}\) is bounded. Therefore \(\mathbf{w}_\alpha^\top \mathbf{c}_t\) is bounded for any fixed \(\mathbf{w}_\alpha\).</span>
+    </div>
+    <div class="proof-step">
+      <span class="step-num">(3)</span>
+      <span>As \(b_\alpha \to +\infty\): for any bounded \(\mathbf{w}_\alpha^\top \mathbf{c}_t\), the argument \(\mathbf{w}_\alpha^\top \mathbf{c}_t + b_\alpha \to +\infty\). Since \(\sigma(x) \to 1\) as \(x \to +\infty\), we get \(\alpha_t \to 1\) for all \(t\).</span>
+    </div>
+    <div class="proof-step">
+      <span class="step-num">(4)</span>
+      <span>Then \(\mathbf{W}_t = 1 \cdot \mathbf{A}_{\text{geo}} + 0 \cdot \mathbf{A}_{\text{learned}}^t = \mathbf{A}_{\text{geo}}\) — the static geographic weight matrix. \(\square\)</span>
+    </div>
+    <p><strong>Practical guarantee.</strong> Because the static model lies within CASA's search space, gradient descent on training loss will never produce a CASA model that performs worse than the static baseline on training data. If no adaptive pattern is found, the optimizer simply drives \(b_\alpha\) large.</p>
+  </div>
+</details>
+
+<!-- ── PROOF D ── -->
+<h3>Proof D — Bounded Deviation from Geographic Prior</h3>
+
+<div class="box box-insight">
+  <div class="box-title">Proposition 3</div>
+  For any time step \(t\), the deviation of \(\mathbf{W}_t\) from the geographic prior is bounded:
+  \[ \|\mathbf{W}_t - \mathbf{A}_{\text{geo}}\|_F \leq (1-\alpha_t)\|\mathbf{A}_{\text{learned}}^t - \mathbf{A}_{\text{geo}}\|_F \]
+</div>
+
+<details class="proof">
+  <summary>Proof D — Geographic prior as implicit regularizer</summary>
+  <div class="proof-body">
+    <div class="proof-step">
+      <span class="step-num">(1)</span>
+      <span>Compute the difference \(\mathbf{W}_t - \mathbf{A}_{\text{geo}}\):</span>
+    </div>
+    <p style="margin-left:2.2rem;">\[ \mathbf{W}_t - \mathbf{A}_{\text{geo}} = \alpha_t \mathbf{A}_{\text{geo}} + (1-\alpha_t)\mathbf{A}_{\text{learned}}^t - \mathbf{A}_{\text{geo}} = (1-\alpha_t)(\mathbf{A}_{\text{learned}}^t - \mathbf{A}_{\text{geo}}) \]</span></p>
+    <div class="proof-step">
+      <span class="step-num">(2)</span>
+      <span>Taking the Frobenius norm and using scalar factoring (\(1-\alpha_t > 0\)):</span>
+    </div>
+    <p style="margin-left:2.2rem;">\[ \|\mathbf{W}_t - \mathbf{A}_{\text{geo}}\|_F = (1-\alpha_t)\|\mathbf{A}_{\text{learned}}^t - \mathbf{A}_{\text{geo}}\|_F \leq (1-\alpha_t)\|\mathbf{A}_{\text{learned}}^t - \mathbf{A}_{\text{geo}}\|_F \; \square \]</p>
+    <p><strong>Interpretation with numbers.</strong> In the worked example (Chapter 4), \(\alpha_t \approx 0.32\). So the deviation of \(\mathbf{W}_t\) from geography is at most \(68\%\) of the maximum possible deviation. During normal months (expected \(\alpha_t \approx 0.8\)), this shrinks to at most \(20\%\). The blending gate automatically regulates how far the model can stray from geographic structure.</p>
+    <p><strong>Practical implication.</strong> This acts as an implicit regularizer — no explicit L2 penalty is needed to prevent the learned attention from becoming geographically arbitrary.</p>
+  </div>
+</details>
+</section>
+
+<hr class="divider">
+
+<!-- ════════════════════════════════════════════
+     CHAPTER 4 — NUMERICAL EXAMPLE
+════════════════════════════════════════════ -->
+<section id="ch4">
+<div class="chapter-label">Chapter 4</div>
+<h2>Worked Numerical Example</h2>
+
+<h3>4.1 Setup</h3>
+
+<p>We trace through the complete CASA forward pass using \(N = 3\) provinces, chosen to represent Indonesia's western, central, and eastern regions. All parameters are simplified for hand-computation (\(d_c = 2\), \(d_a = 2\) instead of 16 and 8).</p>
+
+<table>
+  <tr><th>Province</th><th>Symbol</th><th>Normalized Rainfall \(Y_{t-1}\)</th><th>Note</th></tr>
+  <tr><td>West Java</td><td>P1</td><td class="cell-num">0.3</td><td>Western region, affected by both ENSO and IOD</td></tr>
+  <tr><td>South Sulawesi</td><td>P2</td><td class="cell-num">0.2</td><td>Central region, drier — ENSO + IOD compound effect</td></tr>
+  <tr><td>West Papua</td><td>P3</td><td class="cell-num">0.7</td><td>Eastern region, wetter — relatively protected from IOD</td></tr>
+</table>
+
+<p><strong>Climate conditions:</strong> Moderate El Niño (Niño 3.4 = 1.2) with mild positive IOD (DMI = 0.3).</p>
+
+<p><strong>Geographic weight matrix</strong> (inverse Haversine distances, pre-computed):</p>
+
+<div class="matrix-wrap">
+  <span class="matrix-label">\(\mathbf{A}_{\text{geo}}\) =</span>
+  <span class="matrix-bracket">[</span>
+  <div class="matrix-data">
+    <div class="mrow"><span>0.0</span><span>0.6</span><span>0.4</span></div>
+    <div class="mrow"><span>0.6</span><span>0.0</span><span>0.4</span></div>
+    <div class="mrow"><span>0.4</span><span>0.6</span><span>0.0</span></div>
+  </div>
+  <span class="matrix-bracket">]</span>
+</div>
+
+<p>P1–P2 are relatively close (Java–Sulawesi ≈ 2000 km), and both are farther from P3 (Papua). Note: diagonal is zero — geographic spatial lag excludes self-influence, which is captured separately by the temporal autoregressive component.</p>
+
+<p><strong>Model parameters</strong> (simplified for this example):</p>
+
+<div class="matrix-wrap">
+  <span class="matrix-label">\(\mathbf{W}_c\) =</span>
+  <span class="matrix-bracket">[</span>
+  <div class="matrix-data">
+    <div class="mrow"><span>0.5</span><span>−0.3</span><span>0.8</span><span>0.4</span></div>
+    <div class="mrow"><span>−0.2</span><span>0.6</span><span>−0.1</span><span>0.7</span></div>
+  </div>
+  <span class="matrix-bracket">]</span>
+  &nbsp;&nbsp;
+  <span class="matrix-label">\(\mathbf{W}_a\) =</span>
+  <span class="matrix-bracket">[</span>
+  <div class="matrix-data">
+    <div class="mrow"><span>0.3</span><span>−0.2</span><span>0.5</span><span>0.4</span><span>−0.1</span></div>
+    <div class="mrow"><span>−0.1</span><span>0.4</span><span>−0.3</span><span>0.2</span><span>0.6</span></div>
+  </div>
+  <span class="matrix-bracket">]</span>
+  &nbsp;&nbsp;
+  <span class="matrix-label">\(\mathbf{v}_a\) =</span>
+  <span class="matrix-bracket">[</span>
+  <div class="matrix-data">
+    <div class="mrow"><span>0.7</span></div>
+    <div class="mrow"><span>0.5</span></div>
+  </div>
+  <span class="matrix-bracket">]</span>
+</div>
+
+<div class="matrix-wrap">
+  <span class="matrix-label">\(\mathbf{w}_\alpha\) = [0.6, −0.4]</span>
+  &nbsp;&nbsp;&nbsp;
+  <span class="matrix-label">\(b_\alpha\) = −1.2</span>
+  &nbsp;&nbsp;&nbsp;
+  <span class="matrix-label">All biases \(\mathbf{b}_c, \mathbf{b}_a\) = \(\mathbf{0}\)</span>
+</div>
+
+<h3>4.2 Step-by-Step Computation</h3>
+
+<div class="step-grid">
+
+  <!-- STEP 1 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-number">1</div>
+      <div class="step-title">COMPUTE SUMMARY STATISTICS OF RAINFALL</div>
+    </div>
+    <div class="step-body">
+      <div class="formula">
+        \[\bar{Y} = \frac{0.3 + 0.2 + 0.7}{3} = 0.400 \qquad \sigma_Y = \sqrt{\frac{(0.3-0.4)^2+(0.2-0.4)^2+(0.7-0.4)^2}{3}} = \sqrt{0.0467} = 0.216\]
+      </div>
+      <div class="result-line">
+        <span class="rlabel">→</span>
+        <span>input_c = [0.400, 0.216, 1.200, 0.300]</span>
+        <span style="margin-left:auto;color:#585b70;">(Ȳ, σ_Y, Niño3.4, DMI)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-number">2</div>
+      <div class="step-title">COMPUTE CLIMATE CONTEXT VECTOR c_t</div>
+    </div>
+    <div class="step-body">
+      <div class="formula">
+        \[\mathbf{z}_c = \mathbf{W}_c \cdot \text{input\_c} = \begin{bmatrix} 0.5(0.4)-0.3(0.216)+0.8(1.2)+0.4(0.3) \\ -0.2(0.4)+0.6(0.216)-0.1(1.2)+0.7(0.3) \end{bmatrix} = \begin{bmatrix} 1.215 \\ 0.140 \end{bmatrix}\]
+      </div>
+      <div class="formula">
+        \[\mathbf{c}_t = \tanh(\mathbf{z}_c) = \begin{bmatrix} \tanh(1.215) \\ \tanh(0.140) \end{bmatrix} = \begin{bmatrix} 0.838 \\ 0.139 \end{bmatrix}\]
+      </div>
+      <div class="result-line">
+        <span class="rlabel">→</span>
+        <span><strong>c_t = [0.838, 0.139]</strong></span>
+        <span style="margin-left:auto;color:#585b70;">Both components positive: consistent with El Niño signal</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-number">3</div>
+      <div class="step-title">COMPUTE BLENDING GATE α_t</div>
+    </div>
+    <div class="step-body">
+      <div class="formula">
+        \[\text{logit} = \mathbf{w}_\alpha^\top \mathbf{c}_t + b_\alpha = 0.6(0.838) + (-0.4)(0.139) + (-1.2) = 0.503 - 0.056 - 1.200 = -0.753\]
+      </div>
+      <div class="formula">
+        \[\alpha_t = \sigma(-0.753) = \frac{1}{1+e^{0.753}} = \frac{1}{1+2.123} = \mathbf{0.320}\]
+      </div>
+      <div class="result-line">
+        <span class="rlabel">→</span>
+        <span><strong>α_t = 0.320</strong></span>
+        <span style="margin-left:auto;">32% geography &nbsp;|&nbsp; 68% learned attention</span>
+      </div>
+      <p style="margin-top:0.6rem;font-size:0.86rem;color:#555;">
+        Under moderate El Niño conditions, the gate leans toward learned spatial patterns (68%). This makes physical sense: when climate anomalies are present, geographic proximity alone is insufficient to explain rainfall co-variation.
+      </p>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-number">4</div>
+      <div class="step-title">COMPUTE ATTENTION SCORES e_ij FOR ALL 9 PAIRS</div>
+    </div>
+    <div class="step-body">
+      <p style="font-size:0.86rem;">For each pair \((i,j)\), input vector = \([Y_i,\; Y_j,\; |Y_i-Y_j|,\; c_t[1],\; c_t[2]]\), then \(e_{ij} = \mathbf{v}_a^\top \text{LReLU}(\mathbf{W}_a \cdot \text{input} + \mathbf{b}_a)\).</p>
+      <table style="margin-top:0.7rem;">
+        <tr><th>Pair</th><th>\(Y_i\)</th><th>\(Y_j\)</th><th>\(|Y_i-Y_j|\)</th><th>\(e_{ij}\)</th></tr>
+        <tr><td>(P1,P1)</td><td class="cell-num">0.3</td><td class="cell-num">0.3</td><td class="cell-num">0.0</td><td class="cell-num">0.416</td></tr>
+        <tr><td>(P1,P2)</td><td class="cell-num">0.3</td><td class="cell-num">0.2</td><td class="cell-num">0.1</td><td class="cell-num">0.430</td></tr>
+        <tr><td>(P1,P3)</td><td class="cell-num">0.3</td><td class="cell-num">0.7</td><td class="cell-num">0.4</td><td class="cell-num">0.520</td></tr>
+        <tr><td>(P2,P1)</td><td class="cell-num">0.2</td><td class="cell-num">0.3</td><td class="cell-num">0.1</td><td class="cell-num">0.420</td></tr>
+        <tr><td>(P2,P2)</td><td class="cell-num">0.2</td><td class="cell-num">0.2</td><td class="cell-num">0.0</td><td class="cell-num">0.394</td></tr>
+        <tr><td>(P2,P3)</td><td class="cell-num">0.2</td><td class="cell-num">0.7</td><td class="cell-num">0.5</td><td class="cell-num">0.524</td></tr>
+        <tr><td>(P3,P1)</td><td class="cell-num">0.7</td><td class="cell-num">0.3</td><td class="cell-num">0.4</td><td class="cell-num">0.560</td></tr>
+        <tr><td>(P3,P2)</td><td class="cell-num">0.7</td><td class="cell-num">0.2</td><td class="cell-num">0.5</td><td class="cell-num">0.574</td></tr>
+        <tr><td>(P3,P3)</td><td class="cell-num">0.7</td><td class="cell-num">0.7</td><td class="cell-num">0.0</td><td class="cell-num">0.504</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-number">5</div>
+      <div class="step-title">NORMALIZE VIA ROW-WISE SOFTMAX → A_learned</div>
+    </div>
+    <div class="step-body">
+      <p style="font-size:0.86rem;">For each row \(i\): \(\tilde{\alpha}_{ij} = \exp(e_{ij}) / \sum_k \exp(e_{ik})\)</p>
+
+      <div class="matrix-wrap" style="margin-top:0.8rem;">
+        <span class="matrix-label">\(\mathbf{A}_{\text{learned}}^t\) =</span>
+        <span class="matrix-bracket">[</span>
+        <div class="matrix-data">
+          <div class="mrow"><span>0.320</span><span>0.325</span><span class="highlight-val">0.355</span></div>
+          <div class="mrow"><span>0.324</span><span>0.316</span><span class="highlight-val">0.360</span></div>
+          <div class="mrow"><span class="highlight-val">0.338</span><span class="highlight-val">0.343</span><span>0.319</span></div>
+        </div>
+        <span class="matrix-bracket">]</span>
+        <span style="color:#585b70;font-size:0.78rem;">(all rows sum to 1.000)</span>
+      </div>
+
+      <div class="box box-insight" style="margin-top:0.8rem;font-size:0.86rem;">
+        <div class="box-title">Observation</div>
+        Under El Niño conditions, the learned matrix distributes weights more evenly than geography (which gives 0% to self and fixed ratios to neighbors). The model also assigns notable self-weights (diagonal ≈ 0.32–0.36), capturing self-reinforcing anomalies that geographic weights ignore.
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 6 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-number">6</div>
+      <div class="step-title">BLEND INTO FINAL WEIGHT MATRIX W_t</div>
+    </div>
+    <div class="step-body">
+      <div class="formula">
+        \[\mathbf{W}_t = 0.320 \cdot \mathbf{A}_{\text{geo}} + 0.680 \cdot \mathbf{A}_{\text{learned}}^t\]
+      </div>
+
+      <div class="matrix-wrap">
+        <span class="matrix-label">\(\mathbf{W}_t\) =</span>
+        <span class="matrix-bracket">[</span>
+        <div class="matrix-data">
+          <div class="mrow"><span>0.218</span><span>0.413</span><span>0.370</span></div>
+          <div class="mrow"><span>0.413</span><span>0.215</span><span>0.373</span></div>
+          <div class="mrow"><span>0.358</span><span>0.425</span><span>0.217</span></div>
+        </div>
+        <span class="matrix-bracket">]</span>
+        <span style="color:#585b70;font-size:0.78rem;">(all rows sum to 1.000 ✓)</span>
+      </div>
+
+      <p style="font-size:0.86rem;margin-top:0.6rem;">Compare with \(\mathbf{A}_{\text{geo}}\): the diagonal has grown from 0 to ≈ 0.22, and off-diagonal weights have redistributed to account for the learned teleconnection patterns during El Niño.</p>
+    </div>
+  </div>
+
+  <!-- STEP 7 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-number">7</div>
+      <div class="step-title">COMPUTE ADAPTIVE SPATIAL LAG F*</div>
+    </div>
+    <div class="step-body">
+      <div class="formula">
+        \[\mathbf{F}^* = \mathbf{W}_t \cdot \mathbf{Y} = \begin{bmatrix}0.218(0.3)+0.413(0.2)+0.370(0.7)\\0.413(0.3)+0.215(0.2)+0.373(0.7)\\0.358(0.3)+0.425(0.2)+0.217(0.7)\end{bmatrix} = \begin{bmatrix}0.407\\0.428\\0.344\end{bmatrix}\]
+      </div>
+
+      <p style="margin-top:0.8rem;font-weight:600;font-size:0.9rem;">Comparison: CASA vs Static Baseline</p>
+      <table style="margin-top:0.4rem;">
+        <tr><th>Province</th><th>Rainfall \(Y\)</th><th>CASA \(F^*\)</th><th>Static \(F^*_{\text{static}}\)</th><th>Difference</th><th>Note</th></tr>
+        <tr>
+          <td>P1 — West Java</td>
+          <td class="cell-num">0.300</td>
+          <td class="cell-num">0.407</td>
+          <td class="cell-num">0.400</td>
+          <td class="cell-diff-pos cell-num">+0.007</td>
+          <td>Small change; both models similarly influenced</td>
+        </tr>
+        <tr>
+          <td>P2 — South Sulawesi</td>
+          <td class="cell-num">0.200</td>
+          <td class="cell-num">0.428</td>
+          <td class="cell-num">0.460</td>
+          <td class="cell-diff-neg cell-num">−0.032</td>
+          <td>CASA gives less weight to P3's high value</td>
+        </tr>
+        <tr class="cell-diff-big">
+          <td><strong>P3 — West Papua</strong></td>
+          <td class="cell-num">0.700</td>
+          <td class="cell-num">0.344</td>
+          <td class="cell-num">0.240</td>
+          <td class="cell-diff-pos cell-num"><strong>+0.104</strong></td>
+          <td><strong>Largest difference — see below</strong></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+</div><!-- end step-grid -->
+
+<h3>4.3 Interpreting the Results</h3>
+
+<div class="box box-key">
+  <div class="box-title">Key Finding: West Papua</div>
+  <p>The static model sets \(A_{\text{geo}}[3,3] = 0\), so West Papua's spatial lag depends only on P1 and P2 — both drier than average. Result: \(F^*_{\text{static}} = 0.240\).</p>
+  <p>CASA learns that under El Niño, Papua's own past rainfall is a meaningful predictor for itself (self-loop weight ≈ 0.22) — capturing the phenomenon where eastern Indonesia's anomalously high rainfall is partially self-sustaining during El Niño events. Result: \(F^* = 0.344\), a <strong>+43% increase</strong> over the static estimate.</p>
+</div>
+
+<p>This is consistent with observed ENSO teleconnection patterns: eastern Indonesia (Papua) responds differently to El Niño than western regions, and the coherence between these distant provinces changes sign during strong ENSO events (Feng et al., 2010; Kurniadi et al., 2021).</p>
+
+<h3>4.4 Blending Visualization</h3>
+
+<p>For Province 3 (West Papua), how the weights shift from geography alone to CASA's blended weights:</p>
+
+<div class="bar-chart">
+  <div style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--grey);margin-bottom:0.6rem;">
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ← from P1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; from P2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; self
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">Static A_geo</div>
+    <div class="bar-track">
+      <div style="display:flex;height:100%;border-radius:2px;overflow:hidden;">
+        <div class="bar-fill geo" style="width:40%;">P1: 40%</div>
+        <div class="bar-fill geo" style="width:60%;background:#2d9b9b;">P2: 60%</div>
+        <div class="bar-fill geo" style="width:0%;background:transparent;"></div>
+      </div>
+    </div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">A_learned</div>
+    <div class="bar-track">
+      <div style="display:flex;height:100%;border-radius:2px;overflow:hidden;">
+        <div class="bar-fill learn" style="width:33.8%;font-size:0.62rem;">P1: 34%</div>
+        <div class="bar-fill learn" style="width:34.3%;background:#e09830;font-size:0.62rem;">P2: 34%</div>
+        <div class="bar-fill learn" style="width:31.9%;background:#c07020;font-size:0.62rem;">Self: 32%</div>
+      </div>
+    </div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label">W_t (CASA)</div>
+    <div class="bar-track">
+      <div style="display:flex;height:100%;border-radius:2px;overflow:hidden;">
+        <div class="bar-fill" style="width:35.8%;background:#2a6b8a;font-size:0.62rem;">P1: 36%</div>
+        <div class="bar-fill" style="width:42.5%;background:#3a8a6a;font-size:0.62rem;">P2: 43%</div>
+        <div class="bar-fill" style="width:21.7%;background:#c17f24;font-size:0.62rem;">Self: 22%</div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- ════════════════════════════════════════════
+     CHAPTER 5 — NOVELTY COMPARISON
+════════════════════════════════════════════ -->
+<section id="ch5">
+<div class="chapter-label">Chapter 5</div>
+<h2>Positioning Against Existing Methods</h2>
+
+<h3>5.1 Comparison Table</h3>
+
+<table class="novelty-table">
+  <tr>
+    <th>Property</th>
+    <th>Graph WaveNet</th>
+    <th>AGCRN</th>
+    <th>GAT / GATv2</th>
+    <th>WST-ANet</th>
+    <th><strong>CASA (Ours)</strong></th>
+  </tr>
+  <tr>
+    <td>Dynamic per time step</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-check">✓</td>
+    <td class="cell-check">✓</td>
+    <td class="cell-check"><strong>✓</strong></td>
+  </tr>
+  <tr>
+    <td>Geographic prior (Haversine)</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-check"><strong>✓</strong></td>
+  </tr>
+  <tr>
+    <td>Climate index conditioning</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-cross">✗</td>
+    <td>Partial*</td>
+    <td class="cell-check"><strong>✓</strong></td>
+  </tr>
+  <tr>
+    <td>Learnable geo–learned blending gate</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-check"><strong>✓</strong></td>
+  </tr>
+  <tr>
+    <td>Full \(N \times N\) scope</td>
+    <td class="cell-check">✓</td>
+    <td class="cell-check">✓</td>
+    <td>Depends</td>
+    <td class="cell-check">✓</td>
+    <td class="cell-check"><strong>✓</strong></td>
+  </tr>
+  <tr>
+    <td>Domain: Rainfall / hydrology</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-cross">✗</td>
+    <td class="cell-check"><strong>✓</strong></td>
+  </tr>
+</table>
+
+<p style="font-size:0.8rem;color:var(--grey);">* WST-ANet (Zhong et al., 2024) uses weather conditions as additional feature inputs to the graph module — but the exogenous signal does not control a blending gate between geographic prior and learned attention.</p>
+
+<h3>5.2 Central Novelty Claim</h3>
+
+<div class="box box-result">
+  <div class="box-title">Novelty Statement</div>
+  CASA is, to the best of our knowledge, the first approach that integrates: (i) a geographic Haversine prior as a <em>regularization anchor</em>, (ii) a full \(N \times N\) input-dependent dynamic attention mechanism, and (iii) an explicit climate-conditioned blending gate, into a unified adaptive spatial weighting mechanism for spatiotemporal rainfall forecasting over Indonesian provinces.
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- ════════════════════════════════════════════
+     CHAPTER 6 — VALIDATION PLAN
+════════════════════════════════════════════ -->
+<section id="ch6">
+<div class="chapter-label">Chapter 6</div>
+<h2>Validation Plan</h2>
+
+<h3>6.1 Main Comparison</h3>
+
+<table>
+  <tr><th>Model</th><th>Type</th><th>Spatial Weight \(\mathbf{W}\)</th><th>Exogenous</th></tr>
+  <tr><td>GSTAR(1;1)</td><td>Linear</td><td>Static (Haversine)</td><td class="cell-cross">No</td></tr>
+  <tr><td>GSTARX(1;1)</td><td>Linear + exog.</td><td>Static (Haversine)</td><td class="cell-check">Yes</td></tr>
+  <tr><td>LSTM-GSTARX (static)</td><td>Deep learning</td><td>Static (Haversine)</td><td class="cell-check">Yes</td></tr>
+  <tr class="cell-highlight"><td><strong>LSTM-GSTARX-CASA</strong></td><td>Deep + Attention</td><td><strong>Dynamic (CASA)</strong></td><td class="cell-check">Yes</td></tr>
+</table>
+
+<h3>6.2 Ablation Study</h3>
+
+<table class="ablation">
+  <tr><th>Variant</th><th>Description</th><th>What it tests</th></tr>
+  <tr>
+    <td>Full CASA</td>
+    <td>\(\alpha_t \cdot \mathbf{A}_{\text{geo}} + (1-\alpha_t) \cdot \mathbf{A}_{\text{learned}}^t\)</td>
+    <td>Full model</td>
+  </tr>
+  <tr>
+    <td>No geo prior</td>
+    <td>Set \(\alpha_t = 0\) — use \(\mathbf{A}_{\text{learned}}^t\) only</td>
+    <td>Does geographic prior help?</td>
+  </tr>
+  <tr>
+    <td>No climate conditioning</td>
+    <td>Remove \(\mathbf{X}_t\) from \(\mathbf{c}_t\) — only \(\bar{Y}, \sigma_Y\)</td>
+    <td>Does ENSO/IOD signal matter?</td>
+  </tr>
+  <tr>
+    <td>Static blending</td>
+    <td>Replace \(\alpha_t\) with a fixed learned scalar \(\alpha\)</td>
+    <td>Does adaptive gate add value?</td>
+  </tr>
+  <tr>
+    <td>Restricted softmax</td>
+    <td>Normalize only over geographic neighbors</td>
+    <td>Does full \(N \times N\) scope matter?</td>
+  </tr>
+</table>
+
+<h3>6.3 Interpretability Analysis</h3>
+
+<p>Beyond prediction accuracy, we will assess whether the learned gate \(\alpha_t\) behaves as physically expected:</p>
+
+<ol>
+  <li><strong>Time series plot:</strong> Overlay \(\alpha_t\) against the Niño 3.4 index. Hypothesis: \(\alpha_t\) is negatively correlated with \(|\text{Niño3.4}_t|\).</li>
+  <li><strong>Regime comparison:</strong> Compare mean \(\alpha_t\) across three periods: El Niño (Niño 3.4 > 0.5), La Niña (< −0.5), and neutral (|·| < 0.5). Statistical test: Kruskal-Wallis.</li>
+  <li><strong>W_t heatmaps:</strong> Visualize \(\mathbf{W}_t\) during the strongest El Niño month, strongest La Niña month, and a neutral month. Expected: greater geographic departure during ENSO extremes.</li>
+</ol>
+
+<h3>6.4 Statistical Significance</h3>
+
+<p>Differences in RMSE between models will be tested using the <strong>Diebold-Mariano test</strong> (Diebold & Mariano, 1995) to confirm that improvements are statistically significant and not due to chance variation across the 5-fold cross-validation splits.</p>
+</section>
+
+<hr class="divider">
+
+<!-- ════════════════════════════════════════════
+     APPENDIX A — GRADIENT DERIVATION
+════════════════════════════════════════════ -->
+<section id="appA">
+<div class="chapter-label">Appendix A</div>
+<h2>Gradient Derivation (Backward Pass)</h2>
+
+<p>All parameters in CASA (\(\mathbf{W}_c, \mathbf{b}_c, \mathbf{W}_a, \mathbf{b}_a, \mathbf{v}_a, \mathbf{w}_\alpha, b_\alpha\)) are learned end-to-end via backpropagation through the LSTM loss. The chain of gradients flows as follows.</p>
+
+<h3>A.1 Gradient Through Spatial Lag</h3>
+
+<p>From the LSTM backward pass, we obtain \(\frac{\partial \mathcal{L}}{\partial \mathbf{F}_{t-1}^*}\) (elements 39–76 of the input gradient). Then:</p>
+
+<p>\[\frac{\partial \mathcal{L}}{\partial \mathbf{W}_t} = \frac{\partial \mathcal{L}}{\partial \mathbf{F}_{t-1}^*} \cdot (\mathbf{Y}_{t-1}^*)^\top\]</p>
+
+<h3>A.2 Gradient Through Blending Gate</h3>
+
+<p>\[\frac{\partial \mathcal{L}}{\partial \alpha_t} = \text{tr}\!\left[\left(\frac{\partial \mathcal{L}}{\partial \mathbf{W}_t}\right)^\top \!\cdot\! (\mathbf{A}_{\text{geo}} - \mathbf{A}_{\text{learned}}^t)\right]\]</p>
+
+<p>\[\frac{\partial \mathcal{L}}{\partial \mathbf{w}_\alpha} = \frac{\partial \mathcal{L}}{\partial \alpha_t} \cdot \alpha_t(1-\alpha_t) \cdot \mathbf{c}_t \qquad \frac{\partial \mathcal{L}}{\partial b_\alpha} = \frac{\partial \mathcal{L}}{\partial \alpha_t} \cdot \alpha_t(1-\alpha_t)\]</p>
+
+<h3>A.3 Gradient Through Attention (via Softmax Jacobian)</h3>
+
+<p>\[\frac{\partial \mathcal{L}}{\partial e_{ij}^t} = (1-\alpha_t) \cdot \sum_k \frac{\partial \mathcal{L}}{\partial W_t(i,k)} \cdot \tilde{\alpha}_{ij}^t(\delta_{jk} - \tilde{\alpha}_{ik}^t) \cdot Y_{t-1,k}^*\]</p>
+
+<p>This gradient then flows back through LeakyReLU and the attention MLP to update \(\mathbf{W}_a, \mathbf{b}_a, \mathbf{v}_a\).</p>
+
+<h3>A.4 Gradient Through Context Vector</h3>
+
+<p>The context vector receives gradients from two paths:</p>
+
+<p>\[\frac{\partial \mathcal{L}}{\partial \mathbf{c}_t} = \underbrace{\frac{\partial \mathcal{L}}{\partial \alpha_t} \cdot \alpha_t(1-\alpha_t) \cdot \mathbf{w}_\alpha}_{\text{path 1: via blending gate}} + \underbrace{\sum_{i,j} \frac{\partial \mathcal{L}}{\partial e_{ij}^t} \cdot \frac{\partial e_{ij}^t}{\partial \mathbf{c}_t}}_{\text{path 2: via attention scores}}\]</p>
+
+<p>This gradient propagates through \(\tanh\) to update \(\mathbf{W}_c, \mathbf{b}_c\).</p>
+</section>
+
+<hr class="divider">
+
+<!-- ════════════════════════════════════════════
+     APPENDIX B — REFERENCES
+════════════════════════════════════════════ -->
+<section id="appB">
+<div class="chapter-label">Appendix B</div>
+<h2>Key References</h2>
+
+<ol style="font-size:0.88rem;line-height:1.9;">
+  <li>As-syakur et al. (2014). "Observation of spatial patterns on the rainfall response to ENSO and IOD over Indonesia." <em>Int. J. Climatology</em>, 34(15).</li>
+  <li>Bai et al. (2020). "Adaptive Graph Convolutional Recurrent Network for Traffic Forecasting." <em>NeurIPS 2020</em>.</li>
+  <li>Borovkova, Lopuhaä &amp; Ruchjana (2008). "Consistency and asymptotic normality of the GSTAR model." <em>Statistica Neerlandica</em>, 62(4).</li>
+  <li>Brody, Alon &amp; Yahav (2022). "How Attentive are Graph Attention Networks?" <em>ICLR 2022</em>. arXiv:2105.14491</li>
+  <li>Cho et al. (2014). "Learning Phrase Representations using RNN Encoder-Decoder." <em>EMNLP 2014</em>. arXiv:1406.1078</li>
+  <li>Diebold &amp; Mariano (1995). "Comparing Predictive Accuracy." <em>Journal of Business &amp; Economic Statistics</em>, 13(3).</li>
+  <li>Feng et al. (2010). "Different impacts of two types of Pacific Ocean warming on Southeast Asian rainfall." <em>JGR Atmospheres</em>, 115. DOI: 10.1029/2010JD014761</li>
+  <li>Hochreiter &amp; Schmidhuber (1997). "Long Short-Term Memory." <em>Neural Computation</em>, 9(8), 1735–1780.</li>
+  <li>Kingma &amp; Ba (2014). "Adam: A Method for Stochastic Optimization." <em>ICLR 2015</em>. arXiv:1412.6980</li>
+  <li>Kurniadi et al. (2021). "Independent ENSO and IOD impacts on rainfall extremes over Indonesia." <em>International Journal of Climatology</em>, 41(6).</li>
+  <li>Maas, Hannun &amp; Ng (2013). "Rectifier Nonlinearities Improve Neural Network Acoustic Models." <em>ICML Workshop on Deep Learning for Audio, Speech and Language Processing</em>. — Original LeakyReLU proposal.</li>
+  <li>Saji et al. (1999). "A dipole mode in the tropical Indian Ocean." <em>Nature</em>, 401, 360–363. DOI: 10.1038/43854</li>
+  <li>Vaswani et al. (2017). "Attention Is All You Need." <em>NeurIPS 2017</em>. arXiv:1706.03762</li>
+  <li>Veličković et al. (2018). "Graph Attention Networks." <em>ICLR 2018</em>. arXiv:1710.10903</li>
+  <li>Wu et al. (2019). "Graph WaveNet for Deep Spatial-Temporal Graph Modeling." <em>IJCAI 2019</em>.</li>
+  <li>Zhong et al. (2024). "Weather Interaction-Aware Spatio-Temporal Attention Networks for Urban Traffic Flow Prediction." <em>Buildings</em>, 14(3).</li>
+</ol>
+</section>
+
+<div style="text-align:center;padding:2rem 0;border-top:1px solid var(--border);margin-top:2rem;">
+  <span class="page-num">LSTM-GSTARX · CASA Module · Progress Report · April 2026</span>
+</div>
+
+</main>
+
+<script>
+function toggleNav() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+  const isOpen  = sidebar.classList.contains('open');
+  if (isOpen) {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+  } else {
+    sidebar.classList.add('open');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+function closeNav() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('active');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNav(); });
+</script>
+</body>
+</html>
