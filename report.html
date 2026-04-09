@@ -837,7 +837,7 @@ code {
   <h1>Climate-Adaptive Spatial Attention</h1>
   <div class="subtitle">Adaptive Spatial Weighting for Rainfall Forecasting under ENSO/IOD Variability</div>
   <div class="meta">
-    <span>Author: Arif Nurwahid &nbsp;·&nbsp; arif@lms.id &nbsp;·&nbsp; ORCID: 0009-0005-8802-9629</span>
+    <span>Author: Arif Nurwahid &nbsp;·&nbsp; <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fd9c8f949bbd91908ed39499">[email&#160;protected]</a> &nbsp;·&nbsp; ORCID: 0009-0005-8802-9629</span>
     <span>Supervisor: Prof. Masaya Matsuura — Ehime University</span>
     <span>Date: April 2026</span>
   </div>
@@ -956,7 +956,13 @@ code {
 
 <p>\[ e_{ij}^t = \mathbf{v}_a^\top \cdot \text{LeakyReLU}\!\left(\mathbf{W}_a \begin{bmatrix} Y_{t-1,i} \\ Y_{t-1,j} \\ |Y_{t-1,i} - Y_{t-1,j}| \\ \mathbf{c}_t \end{bmatrix} + \mathbf{b}_a\right) \]</p>
 
-<p>where \(\mathbf{W}_a \in \mathbb{R}^{d_a \times (3+d_c)}\), \(\mathbf{v}_a \in \mathbb{R}^{d_a}\), \(d_a = 8\), and LeakyReLU uses negative slope \(\gamma = 0.2\).</p>
+<p>where the learnable parameters of Stage 2a (168 params total) are:</p>
+<ul style="font-size:0.9rem;line-height:1.8;margin:0.3em 0 0.5em 1.2em">
+  <li>\(\mathbf{W}_a \in \mathbb{R}^{d_a \times (3+d_c)} = \mathbb{R}^{8\times 19}\) — weight matrix of the attention MLP (152 params)</li>
+  <li>\(\mathbf{b}_a \in \mathbb{R}^{d_a} = \mathbb{R}^8\) — bias of the attention MLP (8 params)</li>
+  <li>\(\mathbf{v}_a \in \mathbb{R}^{d_a} = \mathbb{R}^8\) — <strong>projection vector</strong>: collapses the 8-dimensional hidden representation into a single scalar score \(e_{ij}^t\). It is a learnable "relevance question" applied uniformly to all province pairs (8 params)</li>
+  <li>\(\gamma = 0.2\) — LeakyReLU negative slope (fixed hyperparameter, follows GAT convention from Veličković et al. 2018)</li>
+</ul>
 
 <div class="box box-key">
   <div class="box-title">Design Choice: GATv2 Ordering</div>
@@ -1166,7 +1172,7 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
   <tr><td>Blending gate: \(\mathbf{w}_\alpha, b_\alpha\)</td><td>\(d_c + 1\)</td><td class="cell-num">17</td></tr>
   <tr><td><strong>Total CASA</strong></td><td></td><td class="cell-num"><strong>265</strong></td></tr>
   <tr><td>LSTM (existing)</td><td>\(4H(H+d)+4H\)</td><td class="cell-num">36,608</td></tr>
-  <tr><td><em>CASA overhead</em></td><td></td><td class="cell-num"><em>0.72% of total</em></td></tr>
+  <tr><td><em>CASA overhead</em></td><td></td><td class="cell-num"><em>0.67% of total</em></td></tr>
 </table>
 </section>
 
@@ -1859,7 +1865,7 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
 
 </main>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 function toggleNav() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('overlay');
@@ -1875,11 +1881,4 @@ function toggleNav() {
   }
 }
 function closeNav() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('overlay').classList.remove('active');
-  document.body.style.overflow = '';
-}
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNav(); });
-</script>
-</body>
-</html>
+  document.getElementById('sidebar').classList.remove('
