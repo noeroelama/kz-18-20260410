@@ -852,11 +852,11 @@ code {
 
 <h3>1.1 Current Model</h3>
 
-<p>The existing LSTM-GSTARX model computes a spatial lag term at each time step as:</p>
+<p>Right now, the model computes the spatial lag as:</p>
 
 <p>\[ \mathbf{F}_{t-1}^* = \mathbf{W}_{\text{static}} \cdot \mathbf{Y}_{t-1}^* \]</p>
 
-<p>where \(\mathbf{W}_{\text{static}} \in \mathbb{R}^{N \times N}\) is computed once from inverse Haversine distances between province centroids and <strong>frozen for the entire study period</strong>.</p>
+<p>where \(\mathbf{W}_{\text{static}} \in \mathbb{R}^{N \times N}\) is built once from inverse Haversine distances between province centroids — then <strong>never updated again</strong>. The same weights run from 2005 to 2024.</p>
 
 <div class="box box-problem">
   <div class="box-title">Core Assumption (Physically Wrong)</div>
@@ -865,7 +865,7 @@ code {
 
 <h3>1.2 Why This Assumption Fails</h3>
 
-<p>Three climate mechanisms cause spatial dependencies to change over time:</p>
+<p>Three climate mechanisms shift the spatial relationships between provinces over time:</p>
 
 <ol>
   <li><strong>ENSO events</strong> weaken the Walker Circulation, shifting the ascending branch of convection away from the Maritime Continent. Provinces that normally co-vary due to shared monsoon patterns can become decoupled, while geographically distant provinces may become coherent through large-scale teleconnections.</li>
@@ -902,7 +902,7 @@ code {
 
 <h3>2.1 Overview</h3>
 
-<p>CASA replaces the single static matrix \(\mathbf{W}_{\text{static}}\) with a three-stage mechanism that produces a fresh \(\mathbf{W}_t\) at each time step. The rest of the LSTM-GSTARX architecture is unchanged.</p>
+<p>CASA swaps out \(\mathbf{W}_{\text{static}}\) for a three-stage process that builds a new \(\mathbf{W}_t\) at every time step. Everything else in LSTM-GSTARX stays the same.</p>
 
 <!-- FLOWCHART -->
 <div class="flowchart">
@@ -929,7 +929,7 @@ code {
 
 <h3>2.2 Stage 1 — Climate Context Vector</h3>
 
-<p>We first compress the current climate state into a low-dimensional summary vector \(\mathbf{c}_t \in \mathbb{R}^{d_c}\):</p>
+<p>Stage 1 compresses the current climate state into a small summary vector \(\mathbf{c}_t \in \mathbb{R}^{d_c}\):</p>
 
 <p>\[ \mathbf{c}_t = \tanh\!\left(\mathbf{W}_c \begin{bmatrix} \bar{Y}_{t-1} \\ \sigma_{Y_{t-1}} \\ \text{Niño3.4}_t \\ \text{DMI}_t \end{bmatrix} + \mathbf{b}_c\right) \]</p>
 
@@ -945,9 +945,9 @@ code {
 
 <div class="box box-insight" style="font-size:0.88rem;">
   <div class="box-title">Why Mean and Variance — not raw Y values?</div>
-  <p>We deliberately use <strong>summary statistics</strong> of the rainfall field rather than the full \(\mathbf{Y}_{t-1} \in \mathbb{R}^{38}\) vector for two reasons.</p>
-  <p><strong>(1) Dimensionality.</strong> Including all 38 raw values in \(\mathbf{c}_t\) would make \(\mathbf{W}_c \in \mathbb{R}^{d_c \times 42}\) instead of \(\mathbb{R}^{d_c \times 4}\), adding ~1,500 parameters just for the context encoder — overwhelming the 265-parameter CASA budget and risking overfitting with only \(T = 240\) months of training data.</p>
-  <p><strong>(2) Physical sufficiency.</strong> What matters for determining the climate <em>regime</em> at time \(t\) is not "how much did West Java rain?" (that is a local prediction signal), but rather: "Is the whole country dry or wet? Is rainfall spatially heterogeneous or uniform?" Mean and standard deviation capture exactly these two regime-defining quantities. The full spatial detail is handled separately by the per-pair attention scores \(e_{ij}^t\) in Stage 2, which do receive individual \(Y_i\) and \(Y_j\) values.</p>
+  <p>Using the full 38-province vector \(\mathbf{Y}_{t-1}\) here would cause problems — here's why we use summary statistics instead.</p>
+  <p><strong>(1) Parameter cost.</strong> Feeding all 38 raw values into \(\mathbf{c}_t\) would expand \(\mathbf{W}_c\) from \(\mathbb{R}^{d_c \times 4}\) to \(\mathbb{R}^{d_c \times 42}\), adding ~1,500 extra parameters. That dwarfs CASA's entire 265-param budget, and with only 240 months of data, overfitting becomes a real problem.</p>
+  <p><strong>(2) Right information.</strong> For detecting the climate <em>regime</em>, we don't really need "how much did West Java rain?" — that's a local prediction signal. What matters is: is the country as a whole dry or wet, and is rainfall concentrated in one area or spread evenly? Mean and standard deviation answer those two questions. Per-province detail gets handled in Stage 2 anyway — the attention scores \(e_{ij}^t\) receive individual \(Y_i\) and \(Y_j\) values directly.</p>
 </div>
 
 <h3>2.3 Stage 2a — Dynamic Attention Scores</h3>
@@ -971,27 +971,27 @@ code {
 
 <h4>LeakyReLU — The Nonlinearity Inside the Attention MLP</h4>
 
-<p>Before the attention score is projected to a scalar by \(\mathbf{v}_a^\top\), the intermediate vector passes through a <strong>LeakyReLU</strong> nonlinearity. Understanding what this does — and why it is used instead of alternatives — is important for following the gradient flow during training.</p>
+<p>Before \(\mathbf{v}_a^\top\) collapses the vector to a scalar, it passes through <strong>LeakyReLU</strong>. This section covers what that means and why plain ReLU doesn't work as well here.</p>
 
 <h4>Step 1: What is ReLU?</h4>
 
-<p>The Rectified Linear Unit (ReLU) is the simplest nonlinearity widely used in deep learning:</p>
+<p>Quick background on ReLU — the most common activation in deep learning:</p>
 
 <p>\[ \text{ReLU}(x) = \max(0, x) = \begin{cases} x & \text{if } x > 0 \\ 0 & \text{if } x \leq 0 \end{cases} \]</p>
 
-<p>ReLU is fast to compute and avoids the vanishing gradient problem that plagued older activations like sigmoid and tanh (which saturate — their gradients approach zero for large inputs). For positive inputs, ReLU's gradient is exactly 1, so gradients flow without shrinking.</p>
+<p>ReLU is fast and fixes a core problem with older activations like sigmoid and tanh: those saturate — their gradients shrink toward zero for large inputs. ReLU keeps gradient = 1 for positive inputs, so gradients pass through cleanly.</p>
 
 <h4>Step 2: The "Dying ReLU" Problem</h4>
 
 <div class="box box-problem">
   <div class="box-title">The Problem with Plain ReLU</div>
-  <p>ReLU outputs exactly <strong>zero</strong> for any negative input, and its gradient is also zero there. If a neuron's input happens to be consistently negative during training, the gradient flowing through it becomes zero — the neuron stops learning entirely. It is said to have "died."</p>
-  <p>Once dead, the neuron cannot recover, because with zero gradient the weights never update. In a network with many neurons, some fraction can die and remain permanently inactive, reducing the model's effective capacity.</p>
+  <p>For negative inputs, ReLU outputs <strong>zero</strong> and its gradient is also zero. If a neuron keeps receiving negative inputs during training, no gradient flows through it — the weights stop updating and the neuron effectively dies.</p>
+  <p>Dead neurons don't recover. With no gradient, nothing moves the weights. In a deep network, a fair number can quietly die off and stay that way — reducing what the model can actually learn without any obvious warning.</p>
 </div>
 
 <h4>Step 3: LeakyReLU — The Fix</h4>
 
-<p>LeakyReLU keeps a small nonzero slope \(\gamma\) for negative inputs (Maas et al., 2013):</p>
+<p>LeakyReLU (Maas et al., 2013) adds a small slope \(\gamma\) for negative inputs, which is enough to fix the problem:</p>
 
 <p>\[ \text{LeakyReLU}(x) = \begin{cases} x & \text{if } x > 0 \\ \gamma x & \text{if } x \leq 0 \end{cases} \]</p>
 
@@ -999,7 +999,7 @@ code {
 
 <p>\[ \frac{d}{dx}\text{LeakyReLU}(x) = \begin{cases} 1 & \text{if } x > 0 \\ \gamma & \text{if } x < 0 \end{cases} \]</p>
 
-<p>The gradient is never zero — even for negative inputs, it equals \(\gamma\). Neurons cannot die.</p>
+<p>The gradient is always nonzero: 1 for positive inputs, \(\gamma\) for negative ones. No dead neurons.</p>
 
 <!-- SVG visualization of ReLU vs LeakyReLU -->
 <div style="margin: 1.2rem 0; overflow-x: auto;">
@@ -1075,7 +1075,7 @@ code {
 
 <h4>Step 4: Numerical Example</h4>
 
-<p>Suppose an intermediate attention vector \(\mathbf{z} = [-0.5, \; 1.2, \; -0.1, \; 0.8]\) passes through LeakyReLU with \(\gamma = 0.2\):</p>
+<p>Example: run \(\mathbf{z} = [-0.5, \; 1.2, \; -0.1, \; 0.8]\) through LeakyReLU with \(\gamma = 0.2\):</p>
 
 <table style="max-width:440px;">
   <tr><th>Input \(z_k\)</th><th>Condition</th><th>Output</th><th>Gradient</th></tr>
@@ -1085,13 +1085,13 @@ code {
   <tr><td class="cell-num">+0.80</td><td>positive</td><td class="cell-num cell-diff-pos">+0.80</td><td class="cell-num">1.0</td></tr>
 </table>
 
-<p>Negative values are kept — scaled down to 20% of their original magnitude — rather than being killed. All gradients are nonzero, so backpropagation can update every weight.</p>
+<p>The negative values shrink to 20% rather than getting zeroed out. Every gradient stays nonzero, so backprop reaches every parameter.</p>
 
 <h4>Step 5: Why \(\gamma = 0.2\) Specifically?</h4>
 
 <div class="box box-key">
   <div class="box-title">Convention from GAT (Veličković et al., 2018)</div>
-  <p>The slope \(\gamma = 0.2\) was chosen by the original GAT paper and has become a convention in graph attention architectures. It represents a balance:</p>
+  <p>The original GAT paper chose \(\gamma = 0.2\) and it&#39;s become a convention in graph attention work. It&#39;s a tradeoff:</p>
   <ul style="margin-top:0.4rem;">
     <li><strong>Too small</strong> (\(\gamma \approx 0\)): approaches plain ReLU, dying neuron risk returns</li>
     <li><strong>Too large</strong> (\(\gamma \approx 1\)): approaches a linear function, the nonlinearity is too weak to separate complex patterns</li>
@@ -1102,7 +1102,7 @@ code {
 
 <h4>Why Not Use tanh or Sigmoid Here?</h4>
 
-<p>The attention MLP is a <em>score function</em>, not a probability output. We want scores \(e_{ij}^t\) to span a wide real-valued range so that softmax can create meaningful contrasts between pairs. Both sigmoid (output ∈ (0,1)) and tanh (output ∈ (−1, 1)) saturate — their gradients approach zero for large inputs, making training slow. LeakyReLU is unbounded above, so scores can grow freely and softmax normalization creates sharp, discriminative attention weights.</p>
+<p>The attention MLP outputs <em>scores</em>, not probabilities. For softmax to create sharp contrasts between province pairs, those scores need to cover a wide range. Sigmoid and tanh both cap their outputs and slow down training by saturating. LeakyReLU is unbounded, so scores can grow as needed — softmax then turns them into crisp, useful attention weights.</p>
 
 <p style="font-size:0.84rem;color:var(--grey);">
   <em>Reference:</em> Maas, A. L., Hannun, A. Y., &amp; Ng, A. Y. (2013). "Rectifier Nonlinearities Improve Neural Network Acoustic Models." <em>ICML Workshop on Deep Learning for Audio, Speech, and Language Processing</em>. — Original LeakyReLU proposal. The slope 0.2 convention is from Veličković et al. (2018), GAT.
@@ -1112,19 +1112,20 @@ code {
 
 <p>\[ \tilde{\alpha}_{ij}^t = \frac{\exp(e_{ij}^t)}{\displaystyle\sum_{k=1}^{N} \exp(e_{ik}^t)} \]</p>
 
-<p>This produces \(\mathbf{A}_{\text{learned}}^t \in \mathbb{R}^{N \times N}\) — a row-stochastic matrix of learned spatial attention weights.</p>
+<p>The result is \(\mathbf{A}_{\text{learned}}^t \in \mathbb{R}^{N \times N}\) — a learned spatial weight matrix where each row sums to 1.</p>
 
 <h3>2.4 Stage 2b — Climate-Conditioned Blending Gate</h3>
 
 <p>\[ \alpha_t = \sigma\!\left(\mathbf{w}_\alpha^\top \mathbf{c}_t + b_\alpha\right) \in (0, 1) \]</p>
 
-<p>The gate \(\alpha_t\) is a <em>scalar</em> that answers: "How much should the model trust geography right now?"</p>
+<p>\(\alpha_t\) is a single number that asks one question: how much should the model trust geography right now?</p>
 
 <table>
   <tr><th>Climate condition</th><th>Expected \(\alpha_t\)</th><th>Interpretation</th></tr>
-  <tr><td>Normal / neutral ENSO</td><td class="cell-num">≈ 0.7 – 0.9</td><td>Geography dominates; spatial patterns are as expected</td></tr>
-  <tr><td>Moderate El Niño (Niño 3.4 ≈ 1.2)</td><td class="cell-num">≈ 0.3 – 0.5</td><td>Learned patterns become significant</td></tr>
-  <tr><td>Strong El Niño (Niño 3.4 ≥ 1.8)</td><td class="cell-num">≈ 0.1 – 0.3</td><td>Teleconnection patterns dominate over geography</td></tr>
+  <tr><td>Normal / neutral (|Niño 3.4| &lt; 0.5)</td><td class="cell-num">≈ 0.8 – 1.0</td><td>Geography dominates; spatial patterns are as expected</td></tr>
+  <tr><td>Weak El Niño / transition (Niño 3.4 ≈ 0.5–1.0)</td><td class="cell-num">≈ 0.5 – 0.7</td><td>Geography still leads, but learned patterns already contribute</td></tr>
+  <tr><td>Moderate El Niño (Niño 3.4 ≈ 1.0–1.5)</td><td class="cell-num">≈ 0.3 – 0.5</td><td>Learned patterns become significant; teleconnections emerge</td></tr>
+  <tr><td>Strong El Niño (Niño 3.4 ≥ 1.5)</td><td class="cell-num">≈ 0.1 – 0.3</td><td>Teleconnection patterns dominate over geography</td></tr>
 </table>
 
 <h3>2.5 Stage 3 — Adaptive Weight Matrix</h3>
@@ -1185,7 +1186,7 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
 <div class="chapter-label">Chapter 3</div>
 <h2>Mathematical Properties</h2>
 
-<p>We establish four results. Proofs A and B are foundational (confirm the mechanism is well-defined). Proofs C and D give formal guarantees about model behavior.</p>
+<p>Four results follow. Proofs A and B check that the mechanism is internally consistent. Proofs C and D give guarantees about how the model will behave in practice.</p>
 
 <div class="box box-key" style="font-size:0.88rem;">
   <div class="box-title">Proposition Origins</div>
@@ -1213,7 +1214,7 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
   <div class="proof-body">
     <p><strong>Setup.</strong> GAT computes attention scores as:</p>
     <p>\[ e_{ij}^{\text{GAT}} = \mathbf{a}^\top \text{LeakyReLU}(\mathbf{W}\mathbf{h}_i \,\|\, \mathbf{W}\mathbf{h}_j) \]</p>
-    <p>Partition \(\mathbf{a} = [\mathbf{a}_L \| \mathbf{a}_R]\) where \(\mathbf{a}_L, \mathbf{a}_R\) correspond to the left and right halves of the concatenation.</p>
+    <p>Split \(\mathbf{a} = [\mathbf{a}_L \| \mathbf{a}_R]\) into two halves matching the left and right parts of the concatenation.</p>
 
     <div class="proof-step">
       <span class="step-num">(1)</span>
@@ -1234,16 +1235,16 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
       <span class="step-num">(4)</span>
       <span>The condition \(h(j_1) > h(j_2)\) does not involve \(i\) at all. Therefore, for any other query \(i'\): \(e_{i'j_1} > e_{i'j_2}\) by the same argument. \(\square\)</span>
     </div>
-    <p><strong>Why GATv2 fixes this.</strong> GATv2 applies the weight matrix <em>before</em> the nonlinearity:</p>
+    <p><strong>GATv2 fixes this</strong> by applying \(\mathbf{W}\) <em>before</em> the nonlinearity:</p>
     <p>\[ e_{ij}^{\text{GATv2}} = \mathbf{v}^\top \text{LeakyReLU}(\mathbf{W}[\mathbf{h}_i \| \mathbf{h}_j]) \]</p>
-    <p>Here \(\mathbf{W}\) sees both \(\mathbf{h}_i\) and \(\mathbf{h}_j\) together before the nonlinearity, creating cross-terms that prevent the additive decomposition. The ranking of \(j_1\) vs \(j_2\) can now change depending on \(i\). ✓</p>
+    <p>Now \(\mathbf{W}\) processes \(\mathbf{h}_i\) and \(\mathbf{h}_j\) jointly before the nonlinearity, creating cross-terms that break the additive structure. The ranking between \(j_1\) and \(j_2\) can differ depending on \(i\). ✓</p>
   </div>
 </details>
 
 <!-- ── PROOF B ── -->
 <h3>Proof B — \(\mathbf{W}_t\) is Row-Stochastic</h3>
 
-<p>This guarantees that \(\mathbf{F}_{t-1}^* = \mathbf{W}_t \cdot \mathbf{Y}_{t-1}^*\) is a valid weighted average.</p>
+<p>So \(\mathbf{F}_{t-1}^* = \mathbf{W}_t \cdot \mathbf{Y}_{t-1}^*\) is a valid weighted average of provincial rainfall values.</p>
 
 <div class="box box-insight">
   <div class="box-title">Proposition 1</div>
@@ -1271,7 +1272,7 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
       <span class="step-num">(4)</span>
       <span><strong>Non-negativity of \(\mathbf{W}_t\):</strong> Since \(\alpha_t \in (0,1)\), both coefficients \(\alpha_t > 0\) and \((1-\alpha_t) > 0\). Since all entries of \(\mathbf{A}_{\text{geo}}\) and \(\mathbf{A}_{\text{learned}}^t\) are non-negative, all entries of \(\mathbf{W}_t\) are non-negative. \(\square\)</span>
     </div>
-    <p><strong>Interpretation.</strong> \(\mathbf{F}_{t-1}^* = \mathbf{W}_t \cdot \mathbf{Y}_{t-1}^*\) is a convex combination of the normalized rainfall values from all provinces — a weighted average that sums to a meaningful climatological quantity.</p>
+    <p><strong>What this means.</strong> \(\mathbf{F}_{t-1}^*\) is a weighted average of rainfall across provinces, where the weights come from \(\mathbf{W}_t\). Because each row sums to 1, the result stays in the same normalized scale as the inputs — a physically sensible quantity.</p>
   </div>
 </details>
 
@@ -1302,7 +1303,7 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
       <span class="step-num">(4)</span>
       <span>Then \(\mathbf{W}_t = 1 \cdot \mathbf{A}_{\text{geo}} + 0 \cdot \mathbf{A}_{\text{learned}}^t = \mathbf{A}_{\text{geo}}\) — the static geographic weight matrix. \(\square\)</span>
     </div>
-    <p><strong>Practical guarantee.</strong> Because the static model lies within CASA's search space, gradient descent on training loss will never produce a CASA model that performs worse than the static baseline on training data. If no adaptive pattern is found, the optimizer simply drives \(b_\alpha\) large.</p>
+    <p><strong>Bottom line.</strong> The static model is a special case of CASA (when \(b_\alpha \to +\infty\)). So on training data, CASA can only match or beat the static baseline. If there's nothing adaptive to learn, the optimizer pushes \(b_\alpha\) up and geography takes over.</p>
   </div>
 </details>
 
@@ -1328,8 +1329,8 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
       <span>Taking the Frobenius norm and using scalar factoring (\(1-\alpha_t > 0\)):</span>
     </div>
     <p style="margin-left:2.2rem;">\[ \|\mathbf{W}_t - \mathbf{A}_{\text{geo}}\|_F = (1-\alpha_t)\|\mathbf{A}_{\text{learned}}^t - \mathbf{A}_{\text{geo}}\|_F \leq (1-\alpha_t)\|\mathbf{A}_{\text{learned}}^t - \mathbf{A}_{\text{geo}}\|_F \; \square \]</p>
-    <p><strong>Interpretation with numbers.</strong> In the worked example (Chapter 4), \(\alpha_t \approx 0.32\). So the deviation of \(\mathbf{W}_t\) from geography is at most \(68\%\) of the maximum possible deviation. During normal months (expected \(\alpha_t \approx 0.8\)), this shrinks to at most \(20\%\). The blending gate automatically regulates how far the model can stray from geographic structure.</p>
-    <p><strong>Practical implication.</strong> This acts as an implicit regularizer — no explicit L2 penalty is needed to prevent the learned attention from becoming geographically arbitrary.</p>
+    <p><strong>In numbers:</strong> In the worked example (Chapter 4), \(\alpha_t \approx 0.32\) — so \(\mathbf{W}_t\) can deviate at most 68% of the way from geography. During a normal month (\(\alpha_t \approx 0.8\)), that drops to 20%. The gate limits how far the weights can drift from the geographic anchor.</p>
+    <p>The gate acts as a built-in regularizer. No explicit L2 penalty is needed to keep the attention weights grounded in geography.</p>
   </div>
 </details>
 </section>
@@ -1345,7 +1346,7 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
 
 <h3>4.1 Setup</h3>
 
-<p>We trace through the complete CASA forward pass using \(N = 3\) provinces, chosen to represent Indonesia's western, central, and eastern regions. All parameters are simplified for hand-computation (\(d_c = 2\), \(d_a = 2\) instead of 16 and 8).</p>
+<p>This section walks through one full CASA forward pass with \(N = 3\) provinces — one from western, central, and eastern Indonesia. Parameters are scaled down for hand-calculation (\(d_c = 2\), \(d_a = 2\) instead of 16 and 8).</p>
 
 <table>
   <tr><th>Province</th><th>Symbol</th><th>Normalized Rainfall \(Y_{t-1}\)</th><th>Note</th></tr>
@@ -1369,7 +1370,7 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
   <span class="matrix-bracket">]</span>
 </div>
 
-<p>P1–P2 are relatively close (Java–Sulawesi ≈ 2000 km), and both are farther from P3 (Papua). Note: diagonal is zero — geographic spatial lag excludes self-influence, which is captured separately by the temporal autoregressive component.</p>
+<p>P1 and P2 (Java and Sulawesi) are closer to each other than to P3 (Papua), so they get larger weights between them. The diagonal is zero — geographic lag doesn't include self-influence, which the autoregressive part of the model handles.</p>
 
 <p><strong>Model parameters</strong> (simplified for this example):</p>
 
@@ -1600,11 +1601,11 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
 
 <div class="box box-key">
   <div class="box-title">Key Finding: West Papua</div>
-  <p>The static model sets \(A_{\text{geo}}[3,3] = 0\), so West Papua's spatial lag depends only on P1 and P2 — both drier than average. Result: \(F^*_{\text{static}} = 0.240\).</p>
-  <p>CASA learns that under El Niño, Papua's own past rainfall is a meaningful predictor for itself (self-loop weight ≈ 0.22) — capturing the phenomenon where eastern Indonesia's anomalously high rainfall is partially self-sustaining during El Niño events. Result: \(F^* = 0.344\), a <strong>+43% increase</strong> over the static estimate.</p>
+  <p>Since \(A_{\text{geo}}[3,3] = 0\), the static model bases Papua's spatial lag entirely on P1 and P2 — both below average. Result: \(F^*_{\text{static}} = 0.240\).</p>
+  <p>CASA picks up that during El Niño, Papua's own past rainfall is a useful predictor for itself — a self-loop weight of ≈ 0.22 captures this. Eastern Indonesia's wet anomalies during El Niño tend to persist, and the model learns it. Result: \(F^* = 0.344\), a <strong>+43% increase</strong> over the static estimate.</p>
 </div>
 
-<p>This is consistent with observed ENSO teleconnection patterns: eastern Indonesia (Papua) responds differently to El Niño than western regions, and the coherence between these distant provinces changes sign during strong ENSO events (Feng et al., 2010; Kurniadi et al., 2021).</p>
+<p>This matches what&#39;s known about ENSO teleconnections: Papua responds to El Niño differently from Java or Sumatra, and the correlation between distant provinces can flip sign during strong events (Feng et al., 2010; Kurniadi et al., 2021).</p>
 
 <h3>4.4 Blending Visualization</h3>
 
@@ -1779,7 +1780,7 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
 
 <h3>6.3 Interpretability Analysis</h3>
 
-<p>Beyond prediction accuracy, we will assess whether the learned gate \(\alpha_t\) behaves as physically expected:</p>
+<p>Besides checking forecast accuracy, we&#39;ll look at whether \(\alpha_t\) behaves the way physical reasoning suggests:</p>
 
 <ol>
   <li><strong>Time series plot:</strong> Overlay \(\alpha_t\) against the Niño 3.4 index. Hypothesis: \(\alpha_t\) is negatively correlated with \(|\text{Niño3.4}_t|\).</li>
@@ -1789,7 +1790,7 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
 
 <h3>6.4 Statistical Significance</h3>
 
-<p>Differences in RMSE between models will be tested using the <strong>Diebold-Mariano test</strong> (Diebold & Mariano, 1995) to confirm that improvements are statistically significant and not due to chance variation across the 5-fold cross-validation splits.</p>
+<p>RMSE differences between models will be checked with the <strong>Diebold-Mariano test</strong> (Diebold & Mariano, 1995) to make sure the improvements are real and not just noise across the 5 CV folds.</p>
 </section>
 
 <hr class="divider">
@@ -1801,11 +1802,11 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
 <div class="chapter-label">Appendix A</div>
 <h2>Gradient Derivation (Backward Pass)</h2>
 
-<p>All parameters in CASA (\(\mathbf{W}_c, \mathbf{b}_c, \mathbf{W}_a, \mathbf{b}_a, \mathbf{v}_a, \mathbf{w}_\alpha, b_\alpha\)) are learned end-to-end via backpropagation through the LSTM loss. The chain of gradients flows as follows.</p>
+<p>All CASA parameters — \(\mathbf{W}_c, \mathbf{b}_c, \mathbf{W}_a, \mathbf{b}_a, \mathbf{v}_a, \mathbf{w}_\alpha, b_\alpha\) — train jointly with the rest of the network via standard backprop. The gradient chain looks like this:</p>
 
 <h3>A.1 Gradient Through Spatial Lag</h3>
 
-<p>From the LSTM backward pass, we obtain \(\frac{\partial \mathcal{L}}{\partial \mathbf{F}_{t-1}^*}\) (elements 39–76 of the input gradient). Then:</p>
+<p>The LSTM backward pass gives \(\frac{\partial \mathcal{L}}{\partial \mathbf{F}_{t-1}^*}\) (elements 39–76 of the input gradient vector). From there:</p>
 
 <p>\[\frac{\partial \mathcal{L}}{\partial \mathbf{W}_t} = \frac{\partial \mathcal{L}}{\partial \mathbf{F}_{t-1}^*} \cdot (\mathbf{Y}_{t-1}^*)^\top\]</p>
 
@@ -1819,7 +1820,7 @@ x_t ← [Y*_{t-1}, F*, X*_t]<br>
 
 <p>\[\frac{\partial \mathcal{L}}{\partial e_{ij}^t} = (1-\alpha_t) \cdot \sum_k \frac{\partial \mathcal{L}}{\partial W_t(i,k)} \cdot \tilde{\alpha}_{ij}^t(\delta_{jk} - \tilde{\alpha}_{ik}^t) \cdot Y_{t-1,k}^*\]</p>
 
-<p>This gradient then flows back through LeakyReLU and the attention MLP to update \(\mathbf{W}_a, \mathbf{b}_a, \mathbf{v}_a\).</p>
+<p>This flows back through LeakyReLU and the attention MLP, updating \(\mathbf{W}_a, \mathbf{b}_a, \mathbf{v}_a\).</p>
 
 <h3>A.4 Gradient Through Context Vector</h3>
 
@@ -1881,4 +1882,16 @@ function toggleNav() {
   }
 }
 function closeNav() {
-  document.getElementById('sidebar').classList.remove('
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('active');
+  document.body.style.overflow = '';
+}
+document.getElementById('overlay').addEventListener('click', closeNav);
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.MathJax) {
+    MathJax.startup.promise.then(() => MathJax.typesetPromise());
+  }
+});
+</script>
+</body>
+</html>
