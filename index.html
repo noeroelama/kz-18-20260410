@@ -2319,6 +2319,7 @@
         font-family: "JetBrains Mono", monospace;
         font-size: 0.61em;
         line-height: 1.7;
+        white-space: pre;
         overflow: hidden;
       }
       .kw {
@@ -2480,14 +2481,14 @@
         font-style: italic;
         margin-top: 0.2em;
       }
-      /* MathJax */
+      /* MathJax — no scrollbars, let slide-body clip if needed */
       mjx-container[display="true"] {
-        overflow-x: auto;
+        overflow: visible;
         max-width: 100%;
         display: block;
       }
       mjx-container:not([display="true"]) {
-        overflow-x: visible;
+        overflow: visible;
       }
       /* Reveal overrides */
       .reveal .progress {
@@ -2933,9 +2934,7 @@
               >
               <span class="cm">-- adaptive spatial lag</span>
 
-              <span class="cm"
-                >-- LSTM (unchanged) — 3 inputs concatenated</span
-              >
+              <span class="cm">-- LSTM (unchanged)</span>
               x_t ← [Y*<sub>t−1</sub>, <span class="hl">F*</span>,
               X*<sub>t</sub>] → ŷ_t ← LSTM(x_t, h<sub>t−1</sub>,
               C<sub>t−1</sub>)
