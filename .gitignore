@@ -1,0 +1,17 @@
+# ── LaTeX Beamer (presentation) ──
+*.sty
+*.tex
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.pdf
+ubuntu.jpg
+ubuntu2.jpg
+narasi.md
+narration.md
