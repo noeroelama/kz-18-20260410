@@ -84,7 +84,7 @@
 >
 > Graph WaveNet dari Wu dkk. mempelajari matriks adjacency adaptif melalui node embedding. Ide bagus, tapi matriksnya dihitung sekali dan tidak berubah — tidak menyesuaikan setiap bulan. Dan tidak ada informasi geografi di dalamnya.
 >
-> AGCRN dari Bai dkk. lebih fleksibel — membangun struktur graf dari data. Tapi lagi-lagi, grafnya tetap setelah training. Tidak menyesuaikan kondisi iklim yang berbeda.
+> AGCRN (Adaptive Graph Convolutional Recurrent Network) dari Bai dkk. lebih fleksibel — membangun struktur graf dari data. Tapi lagi-lagi, grafnya tetap setelah training. Tidak menyesuaikan kondisi iklim yang berbeda.
 >
 > WST-ANet menggunakan dekomposisi wavelet dengan spatial attention. Ada sedikit conditioning terhadap iklim, tapi tidak ada basis geografi dan tidak ada mekanisme untuk mencampur antara geografi dan bobot yang dipelajari.
 >
